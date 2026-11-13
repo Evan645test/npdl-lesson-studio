@@ -1,0 +1,21 @@
+{
+  "version": "2026-10-07-v1",
+  "records": [
+    {
+      "file": "indicators.json",
+      "copiedFrom": "../NPDL備課工具/學生進程.pdf（逐頁人工抄錄，R12-r4）",
+      "sourceSHA256": "79974c9c5a0d3e3e33e75067e3c6eea481dff49935317cd820ab1def90568ac0",
+      "copySHA256": "e91d0179ed20915468ec2a6d5960ee72aabdb39bd22498cb6f0cad72c484af68",
+      "count": 29,
+      "notice": "子指標名稱與四階條列依《學生版學習進程》（陳佩英、李哲迪、臺北市 NPDL 校群，2022）18 頁逐字抄錄，維持工具四階；不能映射書中學生五階或認定為個人實際能力。僅供臺灣 NPDL 會員學校使用。"
+    },
+    {
+      "file": "curriculum.json",
+      "copiedFrom": "src/data/curriculum/entries.json",
+      "sourceSHA256": "4e81d43488fd4766cfa9bf7d1201d1c5b2b973eafddf671859ed1742d621cdc2",
+      "copySHA256": "0f7f865a2c17c97c8779b88ec82c82890526b4f83de8784bbd778f7678eaee1f",
+      "count": 1155,
+      "notice": "既有本機資料固定副本，未重新逐字核對官方原稿；課綱只保留高中 V 階段，不含 supplement。指標四階摘要是工具參考，不能映射書中學生五階或認定為個人實際能力。"
+    }
+  ]
+}

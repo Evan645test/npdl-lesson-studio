@@ -1,0 +1,34 @@
+// R12-r10：在隔離 Chrome 轉入備份副本，從「下載成果」實際下載完整課程 PDF，核對檔頭與頁數。
+// 用法：node scripts/smoke-r12r10-pdf.mjs --url http://127.0.0.1:5193/ --backup <備份.json> --out <資料夾>
+import { chromium } from 'playwright-core';
+import { readFile, writeFile, mkdir } from 'node:fs/promises';
+import { resolve } from 'node:path';
+import assert from 'node:assert/strict';
+const arg = name => { const i = process.argv.indexOf(name); return i > 0 ? process.argv[i + 1] : undefined; };
+const url = arg('--url'), backup = resolve(arg('--backup')), out = resolve(arg('--out'));
+await mkdir(out, { recursive: true });
+const browser = await chromium.launch({ executablePath: process.env.CHROME_PATH ?? '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome', headless: true });
+const context = await browser.newContext({ acceptDownloads: true }), page = await context.newPage();
+const errors = []; page.on('pageerror', e => errors.push(e.message));
+await page.goto(url);
+await page.getByRole('button', { name: '已有專案', exact: true }).click();
+await page.getByLabel('轉入備份副本', { exact: true }).setInputFiles(backup);
+await page.getByRole('status').filter({ hasText: '轉入' }).first().waitFor();
+const options = await page.getByRole('combobox', { name: '目前專案', exact: true }).locator('option').allTextContents();
+const target = options.findIndex(t => t.includes('公共政策'));
+assert(target >= 0, '找不到轉入的公民專案');
+await page.getByRole('combobox', { name: '目前專案', exact: true }).selectOption({ index: target });
+await page.getByRole('navigation', { name: '專案步驟' }).getByRole('button', { name: /下載成果/ }).click();
+const download = page.waitForEvent('download');
+await page.getByRole('button', { name: '下載 PDF', exact: true }).first().click();
+const file = await download, path = resolve(out, 'lesson-ui.pdf');
+await file.saveAs(path);
+const raw = await readFile(path), text = raw.toString('latin1');
+assert(text.startsWith('%PDF-'), '不是 PDF');
+const pages = (text.match(/\/Type\s*\/Page[^s]/g) ?? []).length;
+assert(pages >= 2, `頁數不足：${pages}`);
+assert.deepEqual(errors, []);
+const result = { name: file.suggestedFilename(), bytes: raw.length, pages, errors };
+await writeFile(resolve(out, 'smoke-pdf.json'), JSON.stringify(result, null, 2) + '\n');
+console.log(JSON.stringify(result));
+await browser.close();

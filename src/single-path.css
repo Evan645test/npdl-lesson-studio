@@ -1,0 +1,362 @@
+.sp-app{min-height:100vh;background:#f4f7f6;color:#193840}
+.sp-header{display:flex;justify-content:space-between;align-items:center;gap:24px;padding:18px max(24px,calc((100vw - 1180px)/2));background:#fff;border-bottom:1px solid #cdd9dc}
+.sp-header>div:first-child{display:flex;align-items:center;gap:12px}
+.sp-header strong{display:block;font-size:19px;line-height:1.3}
+.sp-header small{display:block;font-size:12px;letter-spacing:.04em}
+.sp-mark{display:grid;place-items:center;width:46px;height:46px;background:#123f49;color:white;font-family:"Songti TC",serif;font-size:28px;border-radius:5px}
+.sp-header-actions{display:flex;gap:8px}
+.sp-main{max-width:1180px;margin:0 auto;padding:24px 24px 60px;border:0}
+.sp-progress{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:5px;margin-bottom:20px}
+.sp-progress span{padding:9px 6px;background:#e3eaeb;color:#60777d;font-size:12px;font-weight:650;text-align:center;line-height:1.35}
+.sp-progress .done{background:#dcece7;color:#315c51}
+.sp-progress .current{background:#123f49;color:#fff}
+.sp-hero{display:flex;justify-content:space-between;align-items:end;gap:22px;margin:28px 0 30px;padding:12px 0 25px;border-bottom:1px solid #cdd9dc}
+.sp-hero h1{font-size:clamp(31px,4.1vw,53px);max-width:820px;margin:9px 0;color:#123f49}
+.sp-hero p{font-size:16px;color:#536d73;max-width:760px;margin:0}
+.sp-hero span{color:#a35b41;font-size:13px;font-weight:750;letter-spacing:.13em}
+.sp-hero button{flex:0 0 auto}
+.sp-main>.card{max-width:none}
+.sp-main .card h2{font-size:24px}
+.sp-main label{font-weight:600}
+.sp-main input[type=checkbox]{width:auto;flex:0 0 auto;margin:5px 0 0}
+.sp-main .status{margin-bottom:20px}
+.sp-next{display:flex;justify-content:flex-end;margin:26px 0}
+.sp-selected-list{background:#eef5f4;border-left:3px solid #5e978d;padding:9px 16px;margin:12px 0;font-size:13px}.sp-selected-list p{margin:5px 0}.sp-curriculum{border:1px solid #d5e0e0;padding:8px 18px;margin:12px 0;background:#fbfdfd}
+.sp-curriculum summary{font-size:16px}
+.sp-curriculum-row{display:flex;align-items:flex-start;gap:12px;padding:11px 4px;border-top:1px solid #e5ebeb;font-weight:400!important}
+.sp-curriculum-row>span{display:grid;grid-template-columns:110px minmax(0,1fr);gap:12px;min-width:0}
+.sp-curriculum-row strong{color:#24545e}
+.sp-dimension-grid{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:9px;margin:22px 0}
+.sp-dimension{display:flex;flex-direction:column;gap:7px;align-items:center;justify-content:center;min-height:158px;padding:15px 7px;background:#f8fbfa;border:1px solid #bdd0d3;text-align:center}
+.sp-dimension img{width:70px;height:70px;object-fit:contain}
+.sp-dimension strong{font-size:15px}
+.sp-dimension small{font-size:11px;line-height:1.3}
+.sp-dimension.active{border:2px solid #a35b41;background:#fff7f3}
+.sp-indicators{background:#f7faf9;border:1px solid #d0dfe0;padding:18px 22px}
+.sp-indicators h3{margin-top:0}
+.sp-indicators article{border-top:1px solid #d8e3e4;padding:12px 0}
+.sp-indicators article>label{display:flex;gap:10px;align-items:flex-start}
+.sp-indicators article>label span{display:grid;gap:4px}
+.sp-indicators article small{color:#a35b41}
+.sp-indicators details{margin-left:28px}
+.sp-indicators li{margin:7px 0}
+.sp-recommend{border-left:4px solid #a35b41}
+.sp-edit-group{margin:18px 0;padding:18px 20px;background:#f8fbfb;border:1px solid #d4e1e2}
+.sp-edit-group h3{margin-top:0}
+.sp-full-preview{margin-top:24px;padding:18px 22px;border:1px solid #a9c3c4;background:#f1f8f8}
+.sp-full-preview details{border-top:1px solid #cbdcdd}
+.sp-project-toolbar{display:flex;justify-content:space-between;align-items:end;gap:18px;padding:15px 0;border-bottom:1px solid #cdd9dc}
+.sp-project-toolbar label{min-width:260px}
+.sp-project-toolbar select{margin-bottom:0}
+.sp-project-nav{display:flex;gap:7px;margin:0 0 20px;overflow:auto}
+.sp-project-nav button{flex:1;min-width:130px;justify-content:center;text-align:center}
+.sp-project-nav button[aria-current]{background:#123f49;color:white}
+.sp-lesson{border-top:1px solid #d6e0e0;padding:19px 0}
+.sp-lesson h3{font-size:19px}
+.sp-lesson p{margin:7px 0}
+.sp-pair{border-top:2px solid #c5d7d7;padding:20px 0}
+.sp-pair>div{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:15px}
+.sp-question{border:1px solid #cbdcdd;background:#fbfdfd;padding:18px;min-width:0}
+.sp-question h4{font-size:18px;margin:9px 0}
+.sp-question-label{display:inline-block;padding:3px 8px;background:#dcece7;color:#24574b;font-size:12px;font-weight:700}
+.sp-question .data{white-space:pre-wrap}
+.sp-question li{margin:7px 0}
+.sp-downloads{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}
+.sp-downloads>div{border:1px solid #d4e0e0;padding:18px;display:flex;flex-direction:column;gap:8px}
+.sp-download-extra{display:grid;gap:6px;margin-top:8px}
+.sp-downloads h3{min-height:52px;margin:0}
+.sp-overlay{position:fixed;inset:0;z-index:20;background:rgba(18,44,49,.66);display:grid;place-items:center;padding:16px}
+.sp-dialog{width:min(760px,100%);max-height:calc(100vh - 32px);overflow:auto;background:white;padding:24px;border-top:5px solid #a35b41;box-shadow:0 18px 60px rgba(0,0,0,.25)}
+.sp-dialog-top{display:flex;justify-content:space-between;align-items:start;gap:16px}
+.sp-dialog-top h2{margin-top:0}
+.sp-dialog textarea[readonly]{background:#f2f6f5;font-size:12px}
+.sp-main footer{margin-top:45px}
+@media(max-width:950px){.sp-dimension-grid{grid-template-columns:repeat(3,minmax(0,1fr))}.sp-progress{display:flex;overflow:auto}.sp-progress span{min-width:110px}.sp-downloads{grid-template-columns:1fr}}
+@media(max-width:650px){.sp-header{padding:13px 16px;align-items:flex-start}.sp-header-actions{flex-direction:column}.sp-header-actions button{font-size:12px;padding:5px 9px}.sp-main{padding:16px 14px 44px}.sp-hero{align-items:flex-start;flex-direction:column;margin:18px 0}.sp-hero h1{font-size:34px}.sp-dimension-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.sp-dimension{min-height:125px}.sp-dimension img{width:56px;height:56px}.sp-curriculum-row>span{display:block}.sp-curriculum-row strong{display:block}.sp-project-toolbar{display:block}.sp-project-toolbar label{min-width:0}.sp-project-toolbar .actions{margin-top:12px}.sp-pair>div{grid-template-columns:1fr}.sp-dialog{padding:16px}}
+@media(prefers-reduced-motion:reduce){.sp-app *{scroll-behavior:auto!important}}
+.sp-consent{display:flex;justify-content:space-between;align-items:center;gap:12px;margin:-4px 0 16px;padding:8px 14px;background:#e9f1ef;border-left:3px solid #315c51;font-size:13px;color:#315c51}
+.sp-consent button{flex:0 0 auto;font-size:13px;padding:5px 10px}
+.sp-entry-choices{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:6px}
+.sp-import{border-top:1px solid #cdd9dc;margin-top:16px;padding-top:12px}
+.sp-import h3{font-size:17px;margin:18px 0 8px}
+.sp-import .button{display:inline-block;margin:6px 0 14px}
+.sp-extraction{margin-top:14px;padding:16px;background:#f7faf9;border:1px solid #cdd9dc;border-radius:6px}
+.sp-pick{display:flex;gap:10px;align-items:flex-start;padding:8px 0;border-bottom:1px solid #e1e8e9}
+.sp-pick input{width:auto;flex:0 0 auto;margin:6px 0 0}
+.sp-pick span{display:grid;gap:2px;min-width:0}
+.sp-pick small{color:#536d73;overflow-wrap:anywhere}
+@media(max-width:600px){.sp-consent{flex-direction:column;align-items:stretch}.sp-entry-choices button{flex:1 1 100%}}
+.sp-reference{margin:14px 0;padding:10px 14px;border:1px solid #cdd9dc;border-radius:6px;background:#f7faf9}
+.sp-reference summary{font-weight:650}
+.sp-remove{margin-left:6px;padding:2px 8px;font-size:12px;vertical-align:baseline}
+.sp-ai-picks{margin:14px 0;padding:12px 16px;border:1px dashed #a35b41;border-radius:6px;background:#fdf8f5}
+.sp-ai-picks h3{font-size:16px;margin:4px 0 8px;color:#7b3f2b}
+.sp-ai-picks small{display:block;font-weight:400;font-size:12px;color:#7b3f2b}
+.sp-stage-items{margin:4px 0 10px;padding-left:1.2em;list-style:disc}.sp-stage-items li{margin:2px 0}
+.sp-detail{margin:-6px 0 14px;font-size:13px;color:#536d73}.sp-detail p{margin:4px 0;white-space:pre-wrap;overflow-wrap:anywhere}
+.sp-summary-title{font-size:15px;margin:10px 0 4px}.sp-summary{margin:0 0 10px;padding-left:1.2em;font-size:14px}.sp-summary li{margin:3px 0;overflow-wrap:anywhere}
+.sp-raw{margin:8px 0}.sp-raw summary{font-size:13px}
+.sp-regenerate textarea{min-height:70px}
+.sp-table-wrap{overflow-x:auto;max-width:100%}
+.sp-examples table{border-collapse:collapse;font-size:13px;min-width:640px}
+.sp-examples th,.sp-examples td{border:1px solid #cdd9dc;padding:6px 8px;text-align:left;vertical-align:top}
+.sp-examples th{background:#e9f1ef;white-space:nowrap}
+.sp-examples td button{white-space:nowrap}
+/* R12-r11：接續草稿、收合標題、等待進度、失敗後的下一步、整個流程同意 */
+.sp-resume{display:flex;justify-content:space-between;align-items:center;gap:18px;flex-wrap:wrap;background:#f8eee9;border:1px solid #e8cfc3;border-radius:8px;padding:16px 20px;margin:18px 0}
+.sp-resume>div:first-child{display:grid;gap:2px;min-width:0}.sp-resume span{font-size:14px;color:#60777d}
+.sp-accent{background:#a95436;border-color:#a95436;color:#fff}.sp-accent:hover{background:#8f4529}
+.sp-hero-compact{margin:18px 0 20px;padding:4px 0 14px;align-items:center}
+.sp-hero-compact>div{display:flex;align-items:baseline;gap:14px;flex-wrap:wrap;min-width:0}
+.sp-hero-compact strong{font-size:20px;color:#123f49}.sp-hero-compact small{font-size:14px;color:#60777d}
+.sp-waiting{background:#fff;border:1px solid #cdd9dc;border-radius:8px;padding:20px 22px;margin:14px 0;display:grid;gap:12px}
+.sp-waiting-top{display:flex;justify-content:space-between;align-items:start;gap:16px;flex-wrap:wrap}
+.sp-waiting-top h2{margin:0;font-size:20px}.sp-waiting-top span{font-size:14px;color:#60777d}
+.sp-waiting-top button{border-color:#a95436;color:#a95436}
+.sp-waiting-bar{height:12px;border-radius:999px;background:#e3eaec;overflow:hidden}
+.sp-waiting-bar>div{height:100%;background:#123f49;border-radius:999px;transition:width .8s linear}
+.sp-waiting.is-overdue .sp-waiting-bar>div{background:#a95436}
+.sp-waiting-meta{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;font-size:14px}.sp-waiting-meta span:last-child{color:#60777d}
+.sp-waiting strong{font-variant-numeric:tabular-nums}.sp-waiting .note{margin:0}
+.sp-failure-actions{margin:8px 0 14px}
+.sp-flow-steps{background:#f5f8f8;border-radius:8px;padding:12px 16px;margin:12px 0}.sp-flow-steps ol{margin:6px 0;padding-left:1.4em;font-size:14px}.sp-flow-steps li{margin:4px 0}
+@media (prefers-reduced-motion:reduce){.sp-waiting-bar>div{transition:none}}
+/* R12-r12：規準心態詞提醒、後測固定反思 */
+.sp-mindset{font-size:14px;background:#f8eee9;border-left:3px solid #a95436;padding:8px 12px;margin:6px 0 10px}
+.sp-reflection{border:1px dashed #b9c9cd;border-radius:8px;padding:14px 16px;margin:12px 0}
+.sp-reflection ul{list-style:none;padding:0;margin:8px 0;display:grid;gap:6px;font-size:14px}
+.sp-reflection ol{margin:6px 0;padding-left:1.4em}
+.sp-reflection li{white-space:pre-line}
+.sp-mode-picker{border:1px solid #c5d7d7;border-radius:8px;padding:14px 16px;margin:14px 0}
+.sp-mode-picker h3{margin:0 0 6px}
+.sp-mode-row{margin:10px 0}
+.sp-mode-row label{display:flex;flex-direction:column;gap:6px}
+.sp-mode-row .tag{margin-left:8px}
+.sp-mode-row select{max-width:100%}
+/* 2026-11-07 恢復 3 個課程方向：卡片並排，窄螢幕改直排。 */
+.sp-directions { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; margin: 12px 0; }
+.sp-direction { border: 1px solid var(--line, #d9d6cc); border-radius: 10px; padding: 12px 14px; background: #fff; display: flex; flex-direction: column; gap: 6px; }
+.sp-direction.active { border-color: var(--deep, #0f6e56); box-shadow: 0 0 0 2px rgba(15, 110, 86, .15); }
+.sp-direction h3 { margin: 0; font-size: 1rem; }
+.sp-direction p { margin: 0; }
+.sp-direction p strong { display: block; font-size: .85rem; color: var(--deep, #0f6e56); }
+.sp-direction button { margin-top: auto; align-self: flex-start; }
+/* 2026-11-07 AI 失敗診斷列：訊息下方的小區塊。 */
+.sp-diagnostics { border: 1px dashed var(--line, #d9d6cc); border-radius: 8px; padding: 10px 14px; margin: 8px 0 12px; background: #fff; font-size: .9rem; }
+.sp-diagnostics p { margin: 0 0 8px; }
+.sp-diagnostics textarea { width: 100%; font-family: ui-monospace, monospace; font-size: .8rem; }
+
+.sp-native-dialog{position:fixed;margin:auto;border:0;border-top:5px solid #a35b41;width:min(760px,calc(100vw - 32px));max-height:calc(100dvh - 32px);box-sizing:border-box;color:inherit}
+.sp-native-dialog::backdrop{background:rgba(18,44,49,.66)}
+.sp-draft-recovery{margin-block:12px;color:#365d57}
+.sp-draft-recovery .actions{margin-top:8px}
+@media(max-width:650px){
+  .sp-examples .sp-table-wrap{overflow:visible}
+  .sp-examples table,.sp-examples tbody{display:block;width:100%;min-width:0}
+  .sp-examples thead{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%)}
+  .sp-examples tr{display:grid;grid-template-columns:1fr auto;gap:4px 8px;padding:10px 0;border-bottom:1px solid #cdd9dc}
+  .sp-examples td{display:block;border:0;padding:0;min-width:0}
+  .sp-examples td:first-child{font-weight:700;grid-column:1;grid-row:1}
+  .sp-examples td:nth-child(2){grid-column:1;grid-row:2}
+  .sp-examples td:nth-child(n+3):not(:last-child){grid-column:1/-1}
+  .sp-examples td:last-child{grid-column:2;grid-row:1/span 2;align-self:center}
+}
+
+.sp-paper-settings{min-width:0;margin:16px 0;padding:12px 14px 14px;border:1px solid #c6d7d9;border-radius:8px;background:#f7fafa}
+.sp-paper-settings legend{padding:0 5px;font-weight:700;color:#174450}
+.sp-paper-settings .fields{margin:10px 0}
+.sp-paper-review{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.sp-paper-review>div{border-left:2px solid #9bbcc0;padding-left:10px;overflow-wrap:anywhere}
+.sp-paper-review p{margin:4px 0}
+@media(max-width:650px){.sp-paper-review{grid-template-columns:minmax(0,1fr)}}
+
+/* 題目資料：欄列始終對齊，窄螢幕只捲動表格，保留列名。 */
+.sp-assessment-text{white-space:pre-wrap;overflow-wrap:anywhere}
+.sp-assessment-data{min-width:0;max-width:100%;margin:16px 0}
+.sp-table-hint{margin:0 0 6px;line-height:1.6}
+.sp-table-scroll{max-width:100%;overflow-x:auto;overscroll-behavior-x:contain;border:1px solid #b9cac5;border-radius:6px;background:#fffefa}
+.sp-table-scroll:focus-visible{outline:3px solid #c18e31;outline-offset:3px}
+.sp-table-scroll table{border-collapse:separate;border-spacing:0;width:max-content;min-width:100%;font-size:14px;line-height:1.6;font-variant-numeric:tabular-nums}
+.sp-table-scroll caption{text-align:left;font-weight:600;padding:10px 12px;color:#254d3e}
+.sp-table-scroll th,.sp-table-scroll td{min-width:6rem;max-width:12rem;padding:10px 12px;vertical-align:top;border-top:1px solid #cbd8d1;border-right:1px solid #cbd8d1;white-space:normal;overflow-wrap:anywhere}
+.sp-table-scroll thead th{background:#e7efeb;text-align:left;font-weight:600}
+.sp-table-scroll tbody th{background:#f1f5ef;text-align:left;font-weight:600}
+.sp-table-scroll td{background:#fffefa}
+.sp-table-scroll tr>*:first-child{position:sticky;left:0;z-index:1;min-width:7rem;max-width:10rem;box-shadow:1px 0 #b9cac5}
+.sp-table-scroll tr>*:last-child{border-right:0}
+@media(max-width:640px){.sp-table-scroll th,.sp-table-scroll td{padding:9px 10px;min-width:5.5rem}.sp-table-scroll tr>*:first-child{min-width:6rem;max-width:8rem}}
+
+.sp-assessment-settings > summary{font-size:1.12rem;font-weight:700;cursor:pointer}
+.sp-assessment-settings[open] > summary{margin-bottom:12px}
+.sp-existing-assessment a.button{color:inherit;text-decoration:none}
+.sp-student-downloads{display:grid;gap:12px;margin:16px 0 24px}
+.sp-downloads.sp-phase-downloads{grid-template-columns:repeat(2,minmax(0,1fr))}
+.sp-download-row{display:flex;align-items:center;flex-wrap:wrap;justify-content:space-between;gap:8px;padding:8px 0;border-top:1px solid #dce5e3}
+.sp-download-row .actions{margin:0}
+.sp-phase-downloads button[aria-disabled="true"],.sp-student-downloads button[aria-disabled="true"]{opacity:.55;cursor:not-allowed}
+.sp-project-nav button{min-width:0}
+@media(max-width:650px){
+  .sp-downloads.sp-phase-downloads{grid-template-columns:1fr}
+  .sp-progress{overflow:visible}
+  .sp-progress span:not(.current){display:none}
+  .sp-progress .current{text-align:left;flex:1}
+}
+.sp-export-announcement{position:absolute;width:1px;height:1px;padding:0;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
+.sp-blueprint{margin:16px 0;padding:12px 14px;min-width:0;border:1px solid #c6d7d9;border-radius:8px;background:#f7fafa;overflow-wrap:anywhere}
+.sp-blueprint h3{margin:0 0 8px}
+.sp-blueprint summary{cursor:pointer}
+.sp-blueprint-fields{min-width:0;margin:12px 0 0;padding:0;border:0}
+.sp-blueprint-slot{border-top:1px solid #c6d7d9;padding:10px 0}
+.sp-blueprint-slot summary span{display:inline-block;margin-left:8px;color:#375563;font-size:.88rem}
+.sp-blueprint-slot[open]>summary{margin-bottom:8px}
+.sp-blueprint-slot label{display:block;margin:8px 0}
+.sp-blueprint-slot textarea,.sp-blueprint-work input,.sp-blueprint-work select{width:100%;min-width:0;box-sizing:border-box}
+.sp-blueprint-loads{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.sp-blueprint-work{min-width:0;margin:0;padding:6px 10px;border:1px solid #c6d7d9;border-radius:6px}
+.sp-blueprint-work legend{font-weight:700}
+.sp-blueprint-review p{margin:4px 0;white-space:pre-wrap}
+.sp-blueprint-review li+li{margin-top:12px}
+.sp-blueprint-sr{position:absolute;width:1px;height:1px;padding:0;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
+@media(max-width:650px){.sp-blueprint-loads{grid-template-columns:minmax(0,1fr)}}
+/* R31：證據與規準先唸再改，四階並排 */
+.sp-criterion-head{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
+.sp-criterion-head h3{margin:0}
+.sp-criterion-fields{display:grid;gap:10px;margin:14px 0}
+.sp-criterion-fields div{display:grid;grid-template-columns:9em minmax(0,1fr);gap:12px}
+.sp-criterion-fields dt{font-weight:650;color:#3f5a60}
+.sp-criterion-fields dd{margin:0;line-height:1.65}
+.sp-stage-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin-top:14px}
+.sp-stage-cell{background:#fff;border:1px solid #d4e1e2;border-top:3px solid #9fb9bc;padding:10px 12px;min-width:0}
+.sp-stage-cell:nth-child(2){border-top-color:#6f9ea2}
+.sp-stage-cell:nth-child(3){border-top-color:#3f7d83}
+.sp-stage-cell:nth-child(4){border-top-color:#123f49}
+.sp-stage-name{display:block;font-size:13px;font-weight:700;letter-spacing:.04em;color:#123f49;margin-bottom:6px}
+.sp-stage-cell p{margin:0;font-size:14px;line-height:1.65}
+.sp-stage-cell textarea{box-sizing:border-box;width:100%;min-height:15em;margin:0;padding:8px;font-size:14px;line-height:1.6;resize:vertical}
+@media (max-width:760px){.sp-stage-grid{grid-template-columns:1fr}.sp-criterion-fields div{grid-template-columns:1fr;gap:2px}}
+.sp-criterion-head .actions{margin:0;gap:8px}
+.sp-stage-tag{display:block;font-size:11.5px;font-weight:650;letter-spacing:.06em;color:#60777d;margin:2px 0 4px}
+.sp-stage-source{margin-top:10px;padding:8px 10px;background:#f1f5f4;border-left:2px solid #9fb9bc}
+.sp-stage-source p{margin:0;font-size:13px;line-height:1.65;color:#3f5a60;white-space:pre-line}
+.sp-line-map{list-style:none;margin:0;padding:0;display:grid;gap:12px}
+.sp-line-map li{display:grid;gap:2px;padding-bottom:10px;border-bottom:1px dashed #d4e1e2}
+.sp-line-map li:last-child{border-bottom:0;padding-bottom:0}
+.sp-line-map p{margin:0 0 4px;font-size:14px;line-height:1.6}
+.sp-line-map .sp-line-source{padding:6px 8px;background:#f1f5f4;border-left:2px solid #9fb9bc;color:#3f5a60;font-size:13px}
+.sp-line-map textarea{box-sizing:border-box;width:100%;min-height:6.5em;margin:0;padding:6px 8px;font-size:14px;line-height:1.55;resize:vertical}
+/* R31：完整教案預覽 */
+.sp-full-summary{background:#fff;border:1px solid #d4e1e2;padding:16px 20px;margin-bottom:18px}
+.sp-full-summary h3{margin:0 0 8px;font-size:17px}
+.sp-full-summary h4{margin:14px 0 6px;font-size:14px;letter-spacing:.04em;color:#3f5a60}
+.sp-full-summary p{margin:0 0 10px;font-weight:400;line-height:1.75;max-width:72ch}
+.sp-full-summary ol{margin:0 0 10px;padding-left:1.4em;display:grid;gap:6px;line-height:1.7;max-width:72ch}
+.sp-full-lessons-head{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin:6px 0 10px}
+.sp-full-lessons-head h3{margin:0;font-size:17px}
+.sp-full-lessons{list-style:none;margin:0 0 18px;padding:0;display:grid;gap:8px}
+.sp-full-lesson{background:#fff;border:1px solid #d4e1e2;border-left:4px solid #3f7d83}
+.sp-full-lesson-head{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 12px;width:100%;padding:12px 16px;background:none;border:0;text-align:left;cursor:pointer;font:inherit;color:inherit}
+.sp-full-lesson-head:focus-visible{outline:2px solid #123f49;outline-offset:-2px}
+.sp-full-lesson-no{font-size:13px;font-weight:700;color:#3f7d83;letter-spacing:.04em;white-space:nowrap}
+.sp-full-lesson-name{font-weight:650;flex:1 1 16em;min-width:0}
+.sp-full-lesson-core{font-size:12px;padding:2px 8px;background:#e6f0ee;color:#164b45;white-space:nowrap}
+.sp-full-lesson-body{display:grid;gap:10px;margin:0;padding:0 16px 14px}
+.sp-full-lesson-body div{display:grid;grid-template-columns:6.5em minmax(0,1fr);gap:12px}
+.sp-full-lesson-body dt{font-weight:650;color:#3f5a60;font-size:14px}
+.sp-full-lesson-body dd{margin:0;line-height:1.7}
+@media (max-width:640px){.sp-full-lesson-body div{grid-template-columns:1fr;gap:2px}}
+.sp-subhead{margin:22px 0 4px;font-size:16px}
+.sp-integration ul{margin:6px 0 0;padding-left:1.2em;display:grid;gap:6px;line-height:1.7}
+.sp-full-lesson-open{padding:0 16px 14px;display:grid;gap:10px;justify-items:start}
+.sp-full-lesson-open .sp-full-lesson-body{padding:0;width:100%}
+.sp-scaffolds{width:100%;border-top:1px dashed #d4e1e2;padding-top:8px}
+.sp-scaffolds summary{cursor:pointer;font-weight:650;font-size:14px;color:#3f5a60}
+.sp-scaffolds dl{display:grid;gap:8px;margin:10px 0 0}
+.sp-scaffolds dl div{display:grid;grid-template-columns:6.5em minmax(0,1fr);gap:12px}
+.sp-scaffolds dt{font-weight:650;font-size:14px;color:#123f49}
+.sp-scaffolds dd{margin:0;line-height:1.65}
+.sp-fading{color:#60777d;font-size:14px}
+@media (max-width:640px){.sp-scaffolds dl div{grid-template-columns:1fr;gap:2px}}
+/* R31：逐題藍圖總表 */
+.sp-blueprint-ai{align-items:center;gap:10px;flex-wrap:wrap;margin:8px 0}
+.sp-blueprint-table-wrap{overflow-x:auto;margin:10px 0}
+.sp-blueprint-table{width:100%;min-width:760px;border-collapse:collapse;font-size:14px;line-height:1.6;background:#fff}
+.sp-blueprint-table th,.sp-blueprint-table td{border:1px solid #d4e1e2;padding:8px 10px;text-align:left;vertical-align:top}
+.sp-blueprint-table thead th{background:#edf2f0;font-size:13px;color:#3f5a60;white-space:nowrap}
+.sp-blueprint-table tbody th{font-weight:650;white-space:nowrap}
+.sp-blueprint-ind{display:block;font-size:12px;font-weight:400;color:#60777d;white-space:normal;max-width:12em}
+.sp-blueprint-table .sp-nowrap{white-space:nowrap;font-size:13px}
+.sp-blueprint-table tr.is-blank td,.sp-blueprint-table tr.is-blank th{background:#fbf7f0}
+.sp-blueprint-table tr.is-editing td,.sp-blueprint-table tr.is-editing th{background:#eef5f5}
+.sp-blueprint-empty{color:#a0623a;font-size:13px}
+.sp-blueprint-same{color:#60777d;font-size:12px}
+.sp-blueprint-editrow td{background:#f7fafa;padding:12px 14px}
+.sp-blueprint-editrow label{display:block;margin-bottom:8px}
+/* R33：情境進程前後測 */
+.sp-scenario-panel .sp-step{border-top:1px solid #d4e1e2;padding-top:12px;margin-top:14px}
+.sp-scenario-panel .sp-step h3{margin:0 0 6px;font-size:17px}
+.sp-aspects fieldset{border:1px solid #d4e1e2;background:#f8fbfb;padding:10px 14px;margin:10px 0}
+.sp-aspects legend{font-weight:650;padding:0 4px}
+.sp-aspects ol{margin:0;padding-left:1.2em;display:grid;gap:10px}
+.sp-aspect-anchors{margin-top:6px}.sp-aspect-anchors summary{cursor:pointer;font-size:.92rem}.sp-aspect-anchors label{display:block;margin-top:6px}
+.sp-aspects label{display:block}
+.sp-aspects input{width:100%;box-sizing:border-box}
+.sp-scenario-set{margin-top:14px}
+.sp-scenario-set h3{font-size:16px;margin:0 0 6px}
+.sp-scenario-set>ol{padding-left:1.2em;display:grid;gap:12px}
+.sp-scenario-item{background:#fff;border:1px solid #d4e1e2;padding:10px 14px}
+.sp-scenario-item p{margin:0 0 6px;line-height:1.7}
+.sp-scenario-aspect{font-size:13px;color:#3f7d83;font-weight:650}
+.sp-scenario-item ol[type="A"]{margin:4px 0 8px;display:grid;gap:4px}
+.sp-stage-tag-inline{margin-left:8px;font-size:12px;padding:1px 6px;background:#e6f0ee;color:#164b45;white-space:nowrap}
+.sp-scenario-anchors{display:grid;gap:6px;margin:8px 0 0;padding:8px 10px;background:#f1f5f4}
+.sp-scenario-anchors div{display:grid;grid-template-columns:5.5em minmax(0,1fr);gap:10px}
+.sp-scenario-anchors dt{font-weight:650;font-size:14px;color:#123f49}
+.sp-scenario-anchors dd{margin:0;font-size:14px;line-height:1.6}
+
+/* R37：使用說明與範例課程收合 */
+.sp-guide h3{margin-top:1.2rem}
+.sp-guide-faq dt{font-weight:700;margin-top:.6rem}
+.sp-guide-faq dd{margin:.2rem 0 0}
+.sp-examples>summary{cursor:pointer;font-weight:700;min-height:44px;display:flex;align-items:center}
+
+/* R38（2026-11-12 第四批版面）：依 Sonnet 版面審查與 390px 量測。 */
+/* 觸控目標至少 44px（行內小按鈕如移除 × 維持 32px）。 */
+.sp-app button,.sp-app .button,.sp-app select,.sp-app summary{min-height:44px}
+.sp-app .sp-remove{min-height:32px;min-width:32px}
+.sp-app label:has(>input[type=checkbox]),.sp-app label:has(>input[type=radio]),.sp-app .consent-check{min-height:44px;display:flex;align-items:center;gap:8px}
+.sp-app input[type=checkbox],.sp-app input[type=radio]{width:20px;height:20px;margin:0}
+.sp-app summary{display:flex;align-items:center;cursor:pointer}
+@media(max-width:650px){.sp-header-actions{flex-direction:row;flex-wrap:wrap}.sp-header-actions button{font-size:14px;padding:10px 12px}.ai-setup-heading{flex-direction:column;align-items:stretch}}
+/* 字級：說明與表格最小 14px。 */
+.sp-app :is(small,.note,footer,.eyebrow,th,td,.status,.sp-question-label,.sp-stage-tag-inline,.sp-full-lesson-core,.sp-blueprint-ind,.sp-blueprint-same,.sp-ai-picks small,.sp-header small,.sp-consent,.sp-consent button,.sp-raw summary,.sp-selected-list,.sp-detail,.sp-scenario-aspect,.sp-stage-name,.sp-stage-source p,.sp-line-source,.sp-examples table,.ai-badge,.sp-progress span,.sp-remove){font-size:14px}
+.sp-app .sp-dimension small{font-size:13px}
+/* 對比（白底或淺底至少 4.5:1）。 */
+.sp-app .eyebrow{color:#546e75}
+.sp-app footer{color:#5d6a5a}
+.sp-progress span{color:#4a636a}
+.sp-blueprint-ind,.sp-blueprint-same,.sp-hero-compact small{color:#4a636a}
+/* 「AI 設定」改為段落，避免 h2 出現在 h1 之前。 */
+.ai-setup-heading .ai-using{font-size:18px;font-weight:700;margin:3px 0;color:inherit}
+/* 跳到主要內容（鍵盤使用者）。 */
+.sp-skip{position:absolute;left:8px;top:-60px;z-index:20;padding:10px 14px;background:#123f49;color:#fff;font-weight:700}
+.sp-skip:focus{top:8px}
+.sp-main:focus{outline:none}
+/* 步驟列：桌面顯示「1. 名稱」，手機只顯示目前步驟為「第 n／7 步：名稱」。 */
+.sp-step-count{display:none}
+@media(max-width:650px){.sp-progress .current .sp-step-count{display:inline}.sp-progress .current .sp-step-num{display:none}}
+/* 前後測並排：900px 以下改一欄。 */
+@media(max-width:900px){.sp-pair>div{grid-template-columns:minmax(0,1fr)}}
+/* 手機版首頁主要動作固定在畫面底部，不必捲到最下面。 */
+@media(max-width:650px){.sp-cta{position:sticky;bottom:0;z-index:5;margin:0 -16px;padding:10px 16px calc(10px + env(safe-area-inset-bottom));background:#fff;border-top:1px solid #d5e0df;box-shadow:0 -4px 12px rgba(18,63,73,.08)}.sp-cta button{flex:1 1 100%}}
+.sp-app .field-ai-heading button,.ai-setup-heading>button,.sp-hero span{font-size:14px}
+.sp-app .sp-project-nav button,.sp-app dt,.sp-app dd,.sp-app .sp-full-lesson-no,.sp-app .tag{font-size:14px}
+/* 步驟列內層文字不套用外層格子樣式。 */
+.sp-progress span span{padding:0;margin:0;background:none;color:inherit;min-width:0;font:inherit;line-height:inherit;text-align:inherit;display:inline}
+.sp-progress span .sp-step-count{display:none}
+@media(max-width:650px){.sp-progress .current .sp-step-count{display:inline}.sp-progress .current .sp-step-num{display:none}}
+@media(max-width:650px){.sp-header{flex-direction:column;align-items:stretch;gap:10px}.sp-header-actions{width:100%}.sp-header-actions button{flex:1 1 0;padding:10px 6px}}
+/* R39（Codex 複審）：展開標題保留原生三角形（display:flex 會移除 marker），以內距撐到 44px。 */
+.sp-app summary,.sp-app .sp-examples>summary{display:list-item;align-items:normal;padding-block:10px;box-sizing:border-box}
+/* R41：延伸題與課中學習單 */
+.sp-scenario-extension{border-top:1px dashed #c5d7d7;padding-top:10px;margin-top:6px}
+.sp-kit{border:1px solid #d4e1e2;padding:12px 16px;margin:10px 0;background:#fff}.sp-kit h4{margin:6px 0}.sp-kit-row{margin-top:8px}
