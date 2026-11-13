@@ -1,5 +1,6 @@
 import { checkScenarioSets, SCENARIO_FORMAT } from './scenarioProgression';
 import { checkClassroomKits } from './classroomKit';
+import { checkNarrativeKits } from './narrativeKit';
 import type { AssessmentVersion, DesignVersion, ItemSet, Project } from './types';
 import type { ModeChoice } from './thresholdSet';
 
@@ -37,8 +38,14 @@ export function validateScenarioAssessment(p: Project, d: DesignVersion, a: Asse
   }
   if (a.classroomKits) {
     if (a.phase !== 'pre') fail('情境進程題', '學習單與勾選表只存在前測');
-    try { checkClassroomKits(a.classroomKits, d, eSets.map(s => s.indicatorId)); } catch (error) { fail('情境進程題', error instanceof Error ? error.message : '學習單格式不符'); }
+    try { checkClassroomKits(a.classroomKits, d, a.classroomKits.map(kit => kit.indicatorId)); } catch (error) { fail('情境進程題', error instanceof Error ? error.message : '學習單格式不符'); }
   }
+  if (a.narrativeKits) {
+    if (a.phase !== 'pre') fail('情境進程題', '經驗敘述與參與紀錄只存在前測');
+    try { checkNarrativeKits(a.narrativeKits, d, a.narrativeKits.map(kit => kit.indicatorId)); } catch (error) { fail('情境進程題', error instanceof Error ? error.message : '經驗敘述格式不符'); }
+  }
+  const evidenceIds = [...(a.classroomKits ?? []).map(kit => kit.indicatorId), ...(a.narrativeKits ?? []).map(kit => kit.indicatorId)];
+  if (evidenceIds.some(id => !eSets.some(set => set.indicatorId === id)) || new Set(evidenceIds).size !== evidenceIds.length) fail('情境進程題', '每個課中評量子指標只能有一種材料。');
   if (a.phase === 'post') {
     const pre = p.assessments.find(row => row.id === a.parentPreId);
     if (!pre || !isScenario(pre)) fail('情境進程題', '後測須配到情境進程題前測');

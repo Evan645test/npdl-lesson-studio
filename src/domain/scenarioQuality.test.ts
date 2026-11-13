@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { NEW_ASPECTS, buildAspectPlan, buildScenarioPlan, checkScenarioSets, decodeAspects, decodeScenarioSets, keepPassingItems } from './scenarioProgression';
+import { NEW_ASPECTS, pickBalanced, buildAspectPlan, buildScenarioPlan, checkScenarioSets, decodeAspects, decodeScenarioSets, keepPassingItems } from './scenarioProgression';
 import { plainProblem } from '../next/uxText';
 import { runRequest } from '../services/openai';
 import type { RequestPlan } from '../services/generation';
@@ -10,9 +10,9 @@ const COMM = 'communication-audience-impact'; // NPDL 原文每階 2 句
 const criteria = (id: string, n: number) => Array.from({ length: n }, (_, i) => ({ indicatorId: id, label: `規準${i + 1}`, stages: ['一', '二', '三', '四'] }));
 const anchors = { limited: '理由只說看結果', emerging: '理由提到條件不同', developing: '理由說要同條件重測', proficient: '理由說明哪些資料能區分解釋' };
 const aspectsRaw = (id: string, n: number) => ({ [id]: Array.from({ length: n }, (_, i) => ({ label: `面向${i + 1}`, description: `面向${i + 1}的差異。`, anchors })) });
-const good = (p: string) => ({ limited: `${p}我會看哪一組時間比較短，直接用來下結論`, emerging: `${p}我會先把天氣不同的那一筆拿掉，再比較剩下的`, developing: `${p}我會約好同樣天氣和計時的人，兩人各跑一次`, proficient: `${p}我會先想哪些差異會影響秒數，再決定要重測哪一項` });
+const good = (p: string) => ({ limited: `${p}我會看哪一組的時間比較短，直接用來下結論`, emerging: `${p}我會先把天氣不同的那一筆拿掉，再比較剩下的`, developing: `${p}我會約好同樣天氣和計時的人，兩人各跑一次`, proficient: `${p}我會先想哪些差異會影響秒數，再決定要重測哪一項` });
 const EXT = { prompt: '回顧前面三題，挑一題說明你為什麼這樣選、這樣做可能有什麼代價。', anchors: { limited: '只說選了哪一個', emerging: '說出一個理由', developing: '說出理由與一個限制', proficient: '比較不同情境並說明判斷依據' } };
-const item = (options: Record<string, string>) => ({ scenario: '你和朋友在不同天氣下各跑了一次一百公尺，大家都說朋友比較快。', prompt: '你會怎麼判斷誰比較快？', options, reasonPrompt: '你為什麼這樣做？這樣做可能有什麼代價？' });
+const item = (options: Record<string, string | string[]>) => ({ scenario: '你和朋友在不同天氣下各跑了一次一百公尺，大家都說朋友比較快。', prompt: '你會怎麼判斷誰比較快？', options, reasonPrompt: '你為什麼這樣做？這樣做可能有什麼代價？' });
 
 describe('R41 每個子指標 3 個面向，可請 AI 重新產生', () => {
   it('新請求每個子指標剛好 3 個面向；回應數量不符即拒收；舊資料 1–2 個面向仍可讀', () => {
@@ -44,8 +44,9 @@ describe('R36 選項不可一眼猜出高階', () => {
   const aspects = decodeAspects(aspectsRaw(CRIT, 2), [CRIT], { [CRIT]: 2 });
   it('提示詞要求有好處的做法、差異不在步驟多寡、字數區間，理由題問代價', () => {
     const text = buildScenarioPlan('p', aspects, 'pre', {}, 's').instructions;
-    expect(text).toMatch(/20–40 個字/);
-    expect(text).toMatch(/高階不是低階再多加幾個步驟/);
+    expect(text).toMatch(/每一階給兩種寫法/);
+    expect(text).toMatch(/不是把低階做法再加上更多步驟/);
+    expect(text).toMatch(/精熟的兩種寫法都不可以比其他階明顯長/);
     expect(text).toMatch(/自貶語氣/);
     expect(text).toMatch(/可能遇到的問題或代價/);
   });
@@ -58,7 +59,7 @@ describe('R36 選項不可一眼猜出高階', () => {
   });
   it('R35 實跑被退件的選項：一次列出所有不合格題目與字數', () => {
     const real = { limited: '我看大家的結果，直接覺得朋友A比較快，因為他的成績比我好。', emerging: '我會想到天氣跟計時的人不一樣，可能需要條件一樣才算，但我不太確定要怎麼證明。', developing: '我會建議再找跟之前條件一樣（天氣、場地、計時方式）的情況，讓我們再各自跑一次，看看結果是否仍然一樣，再來比較。', proficient: '我會同時檢查天氣、場地和計時員有沒有影響，建議多跑幾次、互換計時員，並觀察是否有其他影響因素，討論是否還需要哪些重複或補充資料。' };
-    const doubt = { ...good(''), emerging: '我不太確定該怎麼比，所以先照大家說的結果來決定好了' };
+    const doubt = { ...good(''), emerging: '我不太確定怎麼比，就先照大家說的結果決定' };
     let message = '';
     try { decodeScenarioSets({ [CRIT]: { extension: EXT, A1: item(real), A2: item(doubt) } }, aspects, 'x'); } catch (error) { message = (error as Error).message; }
     expect(message).toMatch(/^情境題：2 題要修正。/);
@@ -118,12 +119,53 @@ describe('R36 修復只採用原本不合格題目的新版本', () => {
   });
 });
 
-describe('R36 放寬長度門檻（使用者決定）', () => {
+describe('R44 精熟選項不可明顯最長；每階兩種寫法由程式挑選', () => {
   const aspects = decodeAspects(aspectsRaw(CRIT, 2), [CRIT], { [CRIT]: 2 });
   const sized = (n: number[]) => Object.fromEntries(['limited', 'emerging', 'developing', 'proficient'].map((k, i) => [k, `${'甲乙丙丁'[i]}`.padEnd(n[i], '試')]));
-  it('實跑後測最後一版 30/29/30/48 可通過；R35 的 29/38/55/64 仍拒收', () => {
-    expect(() => decodeScenarioSets({ [CRIT]: { extension: EXT, A1: item(sized([30, 29, 30, 48])), A2: item(good('也')) } }, aspects, 'x')).not.toThrow();
-    expect(() => decodeScenarioSets({ [CRIT]: { extension: EXT, A1: item(sized([29, 38, 55, 64])), A2: item(good('也')) } }, aspects, 'x')).toThrow('差距太大');
-    expect(() => decodeScenarioSets({ [CRIT]: { extension: EXT, A1: item(sized([30, 30, 30, 61])), A2: item(good('也')) } }, aspects, 'x')).toThrow('上限 60 字');
+  const pad = (c: string, n: number) => c.padEnd(n, '試');
+  it('精熟比其他三個中最長者多 4 字內可通過；R43 實跑 30/29/30/48、49/46/43/55 改為拒收；1.8 倍與 60 字上限仍在', () => {
+    expect(() => decodeScenarioSets({ [CRIT]: { extension: EXT, A1: item(sized([33, 34, 39, 43])), A2: item(good('也')) } }, aspects, 'x')).not.toThrow();
+    for (const bad of [[30, 29, 30, 48], [49, 46, 43, 55]]) expect(() => decodeScenarioSets({ [CRIT]: { extension: EXT, A1: item(sized(bad)), A2: item(good('也')) } }, aspects, 'x'), bad.join('/')).toThrow('精熟選項比其他選項長');
+    expect(() => decodeScenarioSets({ [CRIT]: { extension: EXT, A1: item(sized([29, 38, 55, 40])), A2: item(good('也')) } }, aspects, 'x')).toThrow('差距太大');
+    expect(() => decodeScenarioSets({ [CRIT]: { extension: EXT, A1: item(sized([58, 58, 58, 61])), A2: item(good('也')) } }, aspects, 'x')).toThrow('上限 60 字');
+  });
+  it('程式從兩種寫法中挑出精熟不領先、長度最接近的組合（R43 後測實跑：精熟約 60 字、證據有限約 30 字）', () => {
+    const picked = pickBalanced([[pad('甲', 30), pad('甲', 36)], [pad('乙', 28), pad('乙', 35)], [pad('丙', 32), pad('丙', 40)], [pad('丁', 60), pad('丁', 38)]]);
+    expect(picked.map(t => t.length)).toEqual([36, 35, 40, 38]);
+    const options = { limited: [pad('甲', 30), pad('甲', 36)], emerging: [pad('乙', 28), pad('乙', 35)], developing: [pad('丙', 32), pad('丙', 40)], proficient: [pad('丁', 60), pad('丁', 38)] };
+    const sets = decodeScenarioSets({ [CRIT]: { extension: EXT, A1: item(options), A2: item(good('也')) } }, aspects, 'x');
+    expect(sets[0].items[0].options.map(o => o.text.length).sort()).toEqual([35, 36, 38, 40]);
+  });
+  it('兩種寫法都太長時仍退件，訊息請 AI 縮短精熟', () => {
+    const options = { limited: [pad('甲', 28), pad('甲', 30)], emerging: [pad('乙', 28), pad('乙', 30)], developing: [pad('丙', 30), pad('丙', 32)], proficient: [pad('丁', 45), pad('丁', 50)] };
+    expect(() => decodeScenarioSets({ [CRIT]: { extension: EXT, A1: item(options), A2: item(good('也')) } }, aspects, 'x')).toThrow('請把精熟兩種寫法都縮短');
+  });
+  it('兩種寫法中有一種帶自貶語氣時，程式改挑另一種', () => {
+    const picked = pickBalanced([[pad('我不太確定怎麼做', 30), pad('甲', 31)], [pad('乙', 30)], [pad('丙', 31)], [pad('丁', 30)]]);
+    expect(picked[0].startsWith('甲')).toBe(true);
+  });
+  it('R44 實跑漏網：「不太能確定」「無法判斷」也算自貶語氣', () => {
+    for (const phrase of ['我會先試著不同媒介各做一小部分，但不太能確定哪個方式最適合', '我想圖畫和條列都可以試試，但我無法判斷哪一種更適合']) {
+      expect(() => decodeScenarioSets({ [CRIT]: { extension: EXT, A1: item({ ...good(''), emerging: phrase }), A2: item(good('也')) } }, aspects, 'x'), phrase).toThrow('自貶語氣');
+    }
+  });
+  it('新請求要求每階剛好兩種寫法', () => {
+    expect(JSON.stringify(buildScenarioPlan('p', aspects, 'post', {}, 's').payload.outputSchema)).toContain('"minItems":2,"maxItems":2');
+  });
+});
+
+describe('R43 前測避開本單元專有名詞', () => {
+  const aspects = decodeAspects(aspectsRaw(CRIT, 2), [CRIT], { [CRIT]: 2 });
+  it('前測請求附 avoidTerms（取自課程名稱與學習內容）；後測不附', () => {
+    const pre = buildScenarioPlan('p', aspects, 'pre', { title: '校園生物多樣性', contentTexts: ['生物多樣性包含遺傳多樣性、物種多樣性及生態系多樣性三個面向。'] }, 's');
+    expect(pre.payload.avoidTerms).toEqual(expect.arrayContaining(['校園生物多樣性', '遺傳多樣性', '物種多樣性']));
+    expect(JSON.stringify(pre.payload.course)).not.toContain('contentTexts');
+    expect(pre.instructions).toMatch(/avoidTerms/);
+    expect(buildScenarioPlan('p', aspects, 'post', { title: '校園生物多樣性' }, 's').payload.avoidTerms).toBeUndefined();
+  });
+  it('選項用了專有名詞即退件；情境本身已出現的詞不算', () => {
+    const jargon = { ...good(''), developing: '我會比較兩邊的物種多樣性，再決定先看哪一組' };
+    expect(() => decodeScenarioSets({ [CRIT]: { extension: EXT, A1: item(jargon), A2: item(good('也')) } }, aspects, 'x', ['物種多樣性'])).toThrow('本單元專有名詞「物種多樣性」');
+    expect(() => decodeScenarioSets({ [CRIT]: { extension: EXT, A1: item(good('')), A2: item(good('也')) } }, aspects, 'x', ['物種多樣性'])).not.toThrow();
   });
 });

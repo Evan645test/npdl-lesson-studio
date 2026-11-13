@@ -129,10 +129,12 @@
 .sp-reflection li{white-space:pre-line}
 .sp-mode-picker{border:1px solid #c5d7d7;border-radius:8px;padding:14px 16px;margin:14px 0}
 .sp-mode-picker h3{margin:0 0 6px}
-.sp-mode-row{margin:10px 0}
-.sp-mode-row label{display:flex;flex-direction:column;gap:6px}
+.sp-mode-row{margin:10px 0;display:flex;flex-direction:column;gap:8px}
+.sp-mode-row .sp-mode-label{margin:0;font-size:14px}
 .sp-mode-row .tag{margin-left:8px}
-.sp-mode-row select{max-width:100%}
+.sp-mode-row .sp-mode-select{max-width:100%;min-height:44px;font-size:14px}
+.sp-narrative-questions{margin:12px 0}
+.sp-narrative-question{margin:10px 0}
 /* 2026-11-07 恢復 3 個課程方向：卡片並排，窄螢幕改直排。 */
 .sp-directions { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; margin: 12px 0; }
 .sp-direction { border: 1px solid var(--line, #d9d6cc); border-radius: 10px; padding: 12px 14px; background: #fff; display: flex; flex-direction: column; gap: 6px; }
@@ -360,3 +362,16 @@
 /* R41：延伸題與課中學習單 */
 .sp-scenario-extension{border-top:1px dashed #c5d7d7;padding-top:10px;margin-top:6px}
 .sp-kit{border:1px solid #d4e1e2;padding:12px 16px;margin:10px 0;background:#fff}.sp-kit h4{margin:6px 0}.sp-kit-row{margin-top:8px}
+/* R42：Google 表單與雲端資料夾 */
+.sp-google{display:grid;gap:10px;margin:16px 0 24px;padding:14px 16px;border:1px solid #dce5e3;border-radius:10px;background:#fff}
+.sp-google h3,.sp-google h4,.sp-google h5{margin:0}
+.sp-google-block{display:grid;gap:8px;padding-top:10px;border-top:1px solid #dce5e3}
+.sp-google-state{align-self:center;font-weight:600;color:#1f6b52}
+.sp-google-destination{display:grid;gap:6px;border:0;padding:0;margin:0}
+.sp-google-destination legend{font-weight:600;margin-bottom:4px}
+.sp-google-destination label{display:flex;align-items:center;gap:8px;min-height:44px}
+.sp-google-new{display:flex;flex-wrap:wrap;align-items:flex-end;gap:8px}
+.sp-google-new label{display:grid;gap:4px;flex:1 1 240px;min-width:0}
+.sp-google-new input{min-height:44px;width:100%;box-sizing:border-box}
+.sp-google a{overflow-wrap:anywhere}
+.sp-google h5{font-size:1rem}

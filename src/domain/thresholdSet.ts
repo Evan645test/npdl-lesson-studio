@@ -10,13 +10,14 @@ import { cleanSuggestion, confirmedReference, readyDesign, REFERENCE_NOTE, scope
 import type { RequestPlan } from '../services/generation';
 import { sourceSignature } from '../services/generation';
 import { HIGH_SIMILARITY, textSimilarity } from './pairSimilarity';
-import { suggestedMode } from '../data/assessability';
+import { suggestedEvidence, suggestedMode } from '../data/assessability';
 import { recommendStrategy, strategiesFor } from './assessmentStrategy';
 import { dataTable } from '../documents/paperLayout';
 import { checkBlueprintSupport, sameItemBlueprint, validateItemBlueprint } from './itemBlueprint';
 
 export const SET_FORMAT = 'threshold-set-v1' as const;
-export type ModeChoice = { indicatorId: string; mode: SetMode; suggestedMode: SetMode };
+export type EvidenceKind = 'worksheet' | 'narrative';
+export type ModeChoice = { indicatorId: string; mode: SetMode; suggestedMode: SetMode; evidence?: EvidenceKind };
 
 const ITEM_RULE = '選擇題（choices）每題只負責一道門檻：恰好 4 個選項，其中 1 個 above 為 true，呈現門檻以上的表現；另外 3 個 above 為 false，各代表一種門檻以下的常見想法。thinking 寫這個選項代表的想法：門檻以上選項寫它具備的特徵；門檻以下選項寫它是哪一種常見想法，以及為何還不足以通過這道門檻。只給教師看。非選題（opens）每題有 prompt 與 steps；每段有 guide（引導問題）、sentenceStarter（句型開頭，只提供句子結構，不提示答案）、aboveFeatures（門檻以上的具體判讀特徵）、aboveExample、belowExample（參考回答）。對應「發展→精熟」的那一段提供一則新資訊或反例，問學生是否及如何修正判斷；這一段的 aboveFeatures 要依該子指標的精熟描述寫出具體表現（例如分析因素之間如何互相影響、指出資訊的適用範圍、提出正反理由），不可只寫「會依新資訊修正」；回應方式可以是依新資訊修正並說明理由、合理質疑新資訊的前提與適用範圍而有理由地維持原判斷，或說明新資訊為何支持原判斷並指出在什麼條件下不成立，但都必須展現該精熟表現；只有修正、沒有展現精熟表現的回答屬門檻以下，可寫成 belowExample；這則新資訊只給原始資料或事實，不附計算結果、比例或解讀，也不得透露前面選擇題的答案或判斷標準。非選題各段不得重問選擇題已問過的問題（例如選擇題問過要選哪幾列比較，非選題就不要再問選哪幾列），改請學生用自己的話解釋、延伸或套用到情境中的另一部分。學生會看到的欄位（title、context、data、prompt、選項 text、opens 的 prompt、guide、sentenceStarter）不得寫出答案、門檻名稱、哪個選項正確或判讀提示。';
 const OBSERVATION_RULE = '方式 E 是課中評量＋自評，不出紙筆題（自評由程式固定提供，不必產生）；只產生課中觀察表：choices 與 opens 都是空陣列，context 與 data 是空字串，title 寫觀察表名稱；observation.activityIds 填最能觀察到這個子指標的活動 id（取自 design.activities），focus 寫要觀察的具體行為，behaviors 依序寫證據有限、萌芽、發展、精熟四階看得見的行為描述（只寫行為，不寫態度或動機）。';
@@ -61,12 +62,12 @@ const ROLE = '你是高中教師的情境評量設計助理。只回傳符合 ou
 // 預設方式依子指標適合度；教師的選擇覆寫預設。
 export function defaultModes(project: Project): ModeChoice[] {
   const design = readyDesign(project);
-  return design.inputSnapshot.indicatorIds.map(indicatorId => ({ indicatorId, mode: suggestedMode(indicatorId), suggestedMode: suggestedMode(indicatorId) }));
+  return design.inputSnapshot.indicatorIds.map(indicatorId => ({ indicatorId, mode: suggestedMode(indicatorId), suggestedMode: suggestedMode(indicatorId), ...(suggestedMode(indicatorId) === 'E' ? { evidence: suggestedEvidence(indicatorId) } : {}) }));
 }
 function checkModes(project: Project, modes: ModeChoice[]): ModeChoice[] {
   const ids = readyDesign(project).inputSnapshot.indicatorIds;
   if (modes.length !== ids.length || modes.some((row, i) => row.indicatorId !== ids[i] || !MODES.includes(row.mode) || row.suggestedMode !== suggestedMode(row.indicatorId))) throw new Error('測驗方式與子指標不符，請重新選擇。');
-  return modes.map(row => ({ ...row }));
+  return modes.map(row => ({ ...row, ...(row.mode === 'E' ? { evidence: row.evidence ?? suggestedEvidence(row.indicatorId) } : {}) }));
 }
 export function defaultAssessmentBlueprint(project: Project): AssessmentBlueprintSelection {
   return { strategyId: recommendStrategy(readyDesign(project)).id, postActivityId: null };

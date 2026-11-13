@@ -1,4 +1,5 @@
 import { useState, type ReactNode } from 'react';
+import { activityPeriodLoadNotice } from './activityPeriodReminder';
 
 // R31（2026-11-09 使用者決定）：完整教案預覽改為一般內文摘要（建議條列）＋每節有標籤的卡片，可全部展開／收合。
 interface Lesson { id?: string; name?: string; task?: string; knowledgeUse?: string; evidence?: string; formative?: string; coreActivityId?: string }
@@ -44,6 +45,7 @@ export function LessonCards({ lessons, coreNames = {}, title, extra }: {
       </button>
       {shown[i] && <div className="sp-full-lesson-open">
         <dl className="sp-full-lesson-body">{FIELDS.map(([key, label]) => <div key={key}><dt>{label}</dt><dd>{lesson[key] || '（空白）'}</dd></div>)}</dl>
+        {(() => { const notice = activityPeriodLoadNotice(lesson.task || ''); return notice ? <p className="notice" role="status">{notice}</p> : null; })()}
         {extra?.(i)}
       </div>}
     </li>)}</ol>

@@ -390,13 +390,13 @@ describe('門檻題組：改選方式與估時呈現', () => {
 });
 
 describe('適合度：較寬的判定', () => {
-  it('只有恆毅與韌性、社會情緒、領導力預設課中評量＋自評', async () => {
+  it('R43 指定十項預設課中評量，並保留其餘適合度', async () => {
     const { assessabilityOf } = await import('../data/assessability');
     const data = (await import('../data/indicators.json')).default;
     const unsuitable = data.entries.filter(row => assessabilityOf(row.id) === 'unsuitable').map(row => row.id).sort();
-    expect(unsuitable).toEqual(['character-grit-resilience', 'collaboration-social-emotional', 'creativity-leadership']);
-    expect(data.entries.filter(row => assessabilityOf(row.id) === 'suitable')).toHaveLength(13);
-    expect(suggestedMode('creativity-leadership')).toBe('E'); expect(suggestedMode('citizenship-sustainability')).toBe('B');
+    expect(unsuitable).toEqual(['character-empathy-integrity', 'character-grit-resilience', 'character-learning-to-learn', 'citizenship-diversity-equity', 'citizenship-sustainability', 'collaboration-social-emotional', 'communication-identity-humanity', 'communication-reflection', 'creativity-leadership', 'critical-real-world-action']);
+    expect(data.entries.filter(row => assessabilityOf(row.id) === 'suitable')).toHaveLength(12);
+    expect(suggestedMode('creativity-leadership')).toBe('E'); expect(suggestedMode('citizenship-sustainability')).toBe('E');
   });
 });
 

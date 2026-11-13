@@ -6,7 +6,7 @@ import { reviseDesignContent } from '../components/courseDraft';
 import { addIntakeProject } from './intake';
 import { addRegeneratedPhase, buildPhasePlan, confirmedReference, SUGGESTION_MAX } from '../domain/singlePair';
 import { addSeparateSetPhase, addRegeneratedSetPhase, buildSeparatePrePlan, buildSeparatePostPlan, buildConfirmedSetPhasePlan, ITEM_BLUEPRINT_REQUIRED, ITEM_BLUEPRINT_REWRITE, CUE_PROBLEM, cueProblem, planModes, type ModeChoice } from '../domain/thresholdSet';
-import { ASSESSMENT_MODE_GUIDANCE, effectiveModes, hasPendingAssessmentModes, ModePicker, PENDING_ASSESSMENT_MODE_MESSAGE } from './ModePicker';
+import { ASSESSMENT_MODE_GUIDANCE, effectiveModes, hasPendingAssessmentModes, modePickerValue, ModePicker, PENDING_ASSESSMENT_MODE_MESSAGE } from './ModePicker';
 import { recommendStrategy, strategiesFor } from '../domain/assessmentStrategy';
 import { ItemBlueprintReview, ItemPhaseBlueprintReview, type PhaseItemBlueprint } from './ItemBlueprintEditor';
 import { carryItemBlueprint } from '../domain/itemBlueprint';
@@ -28,16 +28,20 @@ import { repairSections, SECTION_NAME } from './sectionRepair';
 import { CriterionReview } from './CriterionReview';
 import { ScenarioPanel } from './ScenarioPanel';
 import { buildClassroomKitPlan, decodeClassroomKits } from '../domain/classroomKit';
-import { buildAspectPlan, buildScenarioPlan, decodeAspects, decodeScenarioSets, keepPassingItems, type AspectPlan } from '../domain/scenarioProgression';
-import { addScenarioAssessment, setClassroomKits, aspectsMatch, isScenario, reusableAspects, scenarioIndicatorIds } from '../domain/scenarioAssessment';
+import { buildNarrativeKitPlan, decodeNarrativeKits } from '../domain/narrativeKit';
+import { AVOID_KEY, buildAspectPlan, buildScenarioPlan, decodeAspects, decodeScenarioSets, keepPassingItems, type AspectPlan } from '../domain/scenarioProgression';
+import { addScenarioAssessment, setClassroomKits, setNarrativeKits, aspectsMatch, isScenario, reusableAspects, scenarioIndicatorIds } from '../domain/scenarioAssessment';
 import { applyBlueprintDraft, buildBlueprintDraftPlan } from '../domain/itemBlueprintAi';
+import { activityPeriodLoadNotice } from './activityPeriodReminder';
 import { FullLessonPreview, LessonCards } from './FullLessonPreview';
 import { AiSetupPanel, usingLabel } from './AiSetupPanel';
 import { estimateProgress, failureKind, formatElapsed, mindsetWords, plainDirectionProblem, plainProblem, repairMessage, TYPICAL_LABEL, TYPICAL_SECONDS, type FailureKind } from './uxText';
 import { isValidModelId, useAiSettings, type AiProvider } from '../services/AiSettings';
-import { curriculum, indicators } from '../components/labels';
+import { curriculum, curriculumById, indicators } from '../components/labels';
 import { buildLessonDocument, type StudentPart } from '../documents/model';
-import { downloadBlob, exportDocument, wordBlob } from '../documents/export';
+import { buildExportFile, downloadBlob, wordBlob } from '../documents/export';
+import { GooglePanel, useDriveTarget } from './GooglePanel';
+import { uploadToDrive } from '../google/googleApi';
 import { buildPrompt } from '../documents/prompt';
 import { lessonPdfBlob } from '../documents/lessonPdf';
 import { fixedReflections, NO_EVIDENCE_LABEL, REFLECTION_NOTE } from '../documents/fixedReflection';
@@ -61,7 +65,7 @@ const store = { getItem: (key: string) => localStorage.getItem(key), setItem: (k
 const dimensions = ['品格', '公民素養', '協作', '溝通', '創造力', '批判思考'] as const;
 const imageNames = ['character', 'citizenship', 'collaboration', 'communication', 'creativity', 'critical'] as const;
 const stageLabels = ['發想與選擇', '學習目標', '證據與規準', '核心活動', '完整課程', '前後測', '下載成果'];
-type Job = 'extract' | 'recommend' | 'goals' | 'evidence' | 'activities' | 'full' | 'splitPre' | 'splitPost' | 'rePre' | 'rePost' | 'lesson' | 'blueprint' | 'aspects' | 'scenarioPre' | 'scenarioPost' | 'classroomKit';
+type Job = 'extract' | 'recommend' | 'goals' | 'evidence' | 'activities' | 'full' | 'splitPre' | 'splitPost' | 'rePre' | 'rePost' | 'lesson' | 'blueprint' | 'aspects' | 'scenarioPre' | 'scenarioPost' | 'classroomKit' | 'narrativeKit';
 // using：送出當下的供應商與模型；等待畫面與失敗按鈕都用這份，不跟著設定變動。
 type PendingRequest = { job: Job; plan: RequestPlan; targetId?: string; auto: boolean; reason: string; using: { provider: AiProvider; model: string } };
 interface AssessmentEdits { preSuggestion: string; teacherSuggestion: string; modeChoices: ModeChoice[] | null; paperSelection: AssessmentBlueprintSelection | null; itemDrafts: Map<string, ItemBlueprint>; confirmedItemScope: string | null }
@@ -89,7 +93,7 @@ function draftStageIndex(stage: SingleDraft['stage']) { return ({ start: 0, goal
 // R36：面向數由請求決定（aspectCount），解析回應時依此核對。
 const kitIdsOf = (plan: RequestPlan) => (plan.payload.indicators as { indicatorId: string }[]).map(row => row.indicatorId);
 const aspectCounts = (plan: RequestPlan) => Object.fromEntries((plan.payload.indicators as { indicatorId: string; aspectCount?: number }[]).flatMap(row => row.aspectCount ? [[row.indicatorId, row.aspectCount]] : []));
-function requestName(job: Job) { return ({ classroomKit: '課中學習單與勾選表', aspects: '情境題面向整理', scenarioPre: '情境進程題前測', scenarioPost: '情境進程題後測', blueprint: '逐題藍圖草擬', extract: '教案擷取起點與重點', recommend: '課程方向與課綱推薦', goals: '學習目標', evidence: '證據與規準', activities: '核心活動', full: '完整逐節教案', splitPre: '前測', splitPost: '後測', rePre: '重寫前測', rePost: '重寫後測', lesson: '單節教案' })[job]; }
+function requestName(job: Job) { return ({ classroomKit: '課中學習單與勾選表', narrativeKit: '經驗敘述與參與紀錄', aspects: '情境題面向整理', scenarioPre: '情境進程題前測', scenarioPost: '情境進程題後測', blueprint: '逐題藍圖草擬', extract: '教案擷取起點與重點', recommend: '課程方向與課綱推薦', goals: '學習目標', evidence: '證據與規準', activities: '核心活動', full: '完整逐節教案', splitPre: '前測', splitPost: '後測', rePre: '重寫前測', rePost: '重寫後測', lesson: '單節教案' })[job]; }
 function plannedRows(subject: string) { return curriculum.filter(row => row.subject === subject || ['化學', '物理', '生物', '地球科學'].includes(subject) && row.subject === '自然科學'); }
 function assertLesson(value: unknown, source: Activity): Activity {
   if (!value || typeof value !== 'object' || Array.isArray(value)) throw new Error('單節教案回應格式不符。');
@@ -178,7 +182,16 @@ export function SinglePathApp() {
   const [busy, setBusy] = useState(false);
   const [exporting, setExporting] = useState(false);
   const exportBusy = useRef(false);
-  const [exportFeedback, setExportFeedback] = useState<{ projectId: string; target: string; message: string } | null>(null);
+  const kitFollowUp = useRef<Job | null>(null);
+  // R43（Codex 複審第 1 項）：E＋F 混用時，第一個請求完全結束（busy 解除）後才送第二個。
+  const [kitQueue, setKitQueue] = useState<Job | null>(null);
+  useEffect(() => {
+    if (!kitQueue || busy || inFlight.current) return;
+    const next = kitQueue; setKitQueue(null); prepare(next);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [kitQueue, busy]);
+  const drive = useDriveTarget();
+  const [exportFeedback, setExportFeedback] = useState<{ projectId: string; target: string; message: string; link?: string } | null>(null);
   const downloadHeading = useRef<HTMLHeadingElement>(null);
   const focusDownload = useRef(false);
   useEffect(() => {
@@ -460,10 +473,25 @@ export function SinglePathApp() {
     const message=plan.payload.phase==='pre'?'正式前測已另存；請核對前測與作答負擔，再產生後測。':'正式後測已另存並配到已核對的前測。';
     return commit(next,message);
   }
+  function generateClassroomKits() {
+    const eModes = selectedModes.filter(row => row.mode === 'E');
+    const needWorksheet = eModes.some(row => modePickerValue(row) === 'worksheet');
+    const needNarrative = eModes.some(row => modePickerValue(row) === 'narrative');
+    // 已保存且涵蓋目前子指標的材料不重做：E 成功、F 失敗後再按一次只補 F。
+    const pre = workspaceRef.current.projects.find(row => row.id === project.id)?.assessments.find(row => row.id === project.activePreId);
+    const idsOf = (kind: 'worksheet' | 'narrative') => eModes.filter(row => modePickerValue(row) === kind).map(row => row.indicatorId);
+    const covered = (ids: string[], kits: { indicatorId: string }[] | undefined) => ids.every(id => (kits ?? []).some(kit => kit.indicatorId === id));
+    const worksheetDone = !needWorksheet || covered(idsOf('worksheet'), pre?.classroomKits);
+    const narrativeDone = !needNarrative || covered(idsOf('narrative'), pre?.narrativeKits);
+    const todo: Job[] = [...(needWorksheet && !worksheetDone ? ['classroomKit' as const] : []), ...(needNarrative && !narrativeDone ? ['narrativeKit' as const] : [])];
+    if (!todo.length) { setMessage('學習單與經驗敘述材料都已產生；要重做請先重新產生前測。'); return; }
+    kitFollowUp.current = todo[1] ?? null;
+    prepare(todo[0]);
+  }
   function prepare(job: Job, targetId?: string) {
     try {
       if (auditRequest.current && !auditRequest.current.signal.aborted) throw new Error('獨立驗題進行中。請先等候或停止驗題。');
-      if (busy || draftLocked && !['splitPre', 'splitPost', 'rePre', 'rePost', 'lesson', 'blueprint', 'aspects', 'scenarioPre', 'scenarioPost', 'classroomKit'].includes(job) || workspaceLocked && ['splitPre', 'splitPost', 'rePre', 'rePost', 'lesson', 'blueprint', 'aspects', 'scenarioPre', 'scenarioPost', 'classroomKit'].includes(job)) throw new Error('目前資料受保護或仍在處理，請先重載核對。');
+      if (busy || draftLocked && !['splitPre', 'splitPost', 'rePre', 'rePost', 'lesson', 'blueprint', 'aspects', 'scenarioPre', 'scenarioPost', 'classroomKit', 'narrativeKit'].includes(job) || workspaceLocked && ['splitPre', 'splitPost', 'rePre', 'rePost', 'lesson', 'blueprint', 'aspects', 'scenarioPre', 'scenarioPost', 'classroomKit', 'narrativeKit'].includes(job)) throw new Error('目前資料受保護或仍在處理，請先重載核對。');
       if (assessmentBlockReason && (job === 'rePre' || job === 'rePost')) throw new Error(assessmentBlockReason);
       if (job === 'splitPre' && hasPaper && !itemConfirmed) throw new Error(ITEM_BLUEPRINT_REQUIRED);
       if ((job === 'rePre' || job === 'rePost') && needsBlueprintForRewrite) throw new Error(ITEM_BLUEPRINT_REWRITE);
@@ -471,7 +499,7 @@ export function SinglePathApp() {
       if ((job === 'scenarioPre' && !scenarioIds.length) || (job === 'scenarioPost' && scenarioPre && !(scenarioPre.scenarioSets ?? []).length)) {
         const phase = job === 'scenarioPre' ? 'pre' : 'post';
         if (phase === 'post' && !scenarioPre?.reviewedAt) throw new Error('請先確認前測。');
-        commit(addScenarioAssessment(workspace, project.id, phase, { aspects: [], scenarioSets: [] }, selectedModes), phase === 'pre' ? '全部採課堂學習單＋表現勾選表：已由規準組成前測。請按「請 AI 產生學習單與勾選表」，核對後再確認前測。' : '已直接由規準組成後測，未呼叫 AI。請核對後確認前後測。');
+        commit(addScenarioAssessment(workspace, project.id, phase, { aspects: [], scenarioSets: [] }, selectedModes), phase === 'pre' ? '全部採課中評量：已由規準組成前測。請按「請 AI 產生…課中評量材料」，核對後再確認前測。' : '已直接由規準組成後測，未呼叫 AI。請核對後確認前後測。');
         return;
       }
       if (!key.trim()) { focusKeyInput(); throw new Error('請先填入 API 金鑰，再產生草稿。'); }
@@ -481,14 +509,16 @@ export function SinglePathApp() {
       else if (job === 'splitPost') plan = buildSeparatePostPlan(project, teacherSuggestion);
       else if (job === 'rePre' || job === 'rePost') plan = (activeIsSet(project) ? buildConfirmedSetPhasePlan : buildPhasePlan)(project, job === 'rePre' ? 'pre' : 'post', teacherSuggestion);
       else if (job === 'lesson') { const lesson = design.activities.find(row => row.id === targetId); if (!lesson) throw new Error('指定節次不存在。'); plan = lessonPlan(project, lesson); }
-      else if (job === 'classroomKit') {
-        // R41：方式 E 子指標的學習單與勾選表，依前測引用的設計產生，存在前測上。
-        if (!scenarioPre || scenarioPre.reviewedAt) throw new Error('請先產生情境進程題前測；前測確認後學習單已鎖定。');
+      else if (job === 'classroomKit' || job === 'narrativeKit') {
+        // R43：F、E 都在前測階段先產生，後測只沿用前測保存的材料。
+        if (!scenarioPre || scenarioPre.reviewedAt) throw new Error('請先產生情境進程題前測；前測確認後材料已鎖定。');
         const kitDesign = project.designs.find(row => row.id === scenarioPre.designId)!;
-        plan = buildClassroomKitPlan(project.id, kitDesign, (scenarioPre.sets ?? []).map(row => row.indicatorId), scenarioCourse, scenarioScope);
+        const ids = scenarioRef.current.modes.filter(row => row.mode === 'E' && (row.evidence ?? 'worksheet') === (job === 'narrativeKit' ? 'narrative' : 'worksheet')).map(row => row.indicatorId);
+        if (!ids.length) throw new Error(job === 'narrativeKit' ? '目前沒有採經驗敘述的子指標。' : '目前沒有採課堂學習單的子指標。');
+        plan = job === 'narrativeKit' ? buildNarrativeKitPlan(project.id, kitDesign, ids, scenarioCourse, scenarioScope) : buildClassroomKitPlan(project.id, kitDesign, ids, scenarioCourse, scenarioScope);
       }
       else if (job === 'aspects') plan = buildAspectPlan(project.id, targetId ? [targetId] : scenarioIds, scenarioCourse, scenarioScope, scenarioCriteria, targetId ? { [targetId]: (aspectPlans?.find(row => row.indicatorId === targetId)?.aspects ?? []).map(({ label, description }) => ({ label, description })) } : undefined);
-      else if (job === 'scenarioPre') { if (!aspectsConfirmed || !aspectsMatch(aspectPlans, selectedModes)) throw new Error('面向尚未確認，或與目前的測驗方式不符；請重新整理並確認面向。'); plan = buildScenarioPlan(project.id, aspectPlans ?? [], 'pre', scenarioCourse, scenarioScope, undefined, scenarioCriteria); }
+      else if (job === 'scenarioPre') { if (!aspectsConfirmed || !aspectsMatch(aspectPlans, selectedModes)) throw new Error('面向尚未確認，或與目前的測驗方式不符；請重新整理並確認面向。'); plan = buildScenarioPlan(project.id, aspectPlans ?? [], 'pre', { ...scenarioCourse, contentTexts: design.inputSnapshot.curriculumIds.map(id => curriculumById(id)).filter(row => row?.kind === 'learning_content').map(row => row!.text) }, scenarioScope, undefined, scenarioCriteria); }
       else if (job === 'scenarioPost') {
         if (!scenarioPre?.reviewedAt) throw new Error('請先確認情境進程題前測。');
         plan = buildScenarioPlan(project.id, scenarioPre.aspects ?? [], 'post', scenarioCourse, scenarioScope, { drivingQuestion: design.inputSnapshot.drivingQuestion ?? '', finalProduct: design.inputSnapshot.finalProduct ?? '', activities: design.activities.map(row => ({ name: row.name, task: row.task })) }, scenarioCriteria);
@@ -552,10 +582,10 @@ export function SinglePathApp() {
     const { job, plan, targetId } = request; const abort = new AbortController(); controller.current = abort; setBusy(true);
     setFailure(null);
     try {
-      const projectJob = ['splitPre', 'splitPost', 'rePre', 'rePost', 'lesson', 'blueprint', 'aspects', 'scenarioPre', 'scenarioPost', 'classroomKit'].includes(job);
+      const projectJob = ['splitPre', 'splitPost', 'rePre', 'rePost', 'lesson', 'blueprint', 'aspects', 'scenarioPre', 'scenarioPost', 'classroomKit', 'narrativeKit'].includes(job);
       if (projectJob ? workspaceLocked : draftLocked) throw new Error('另一個分頁改過這份資料。請先下載備份，再重新整理頁面核對');
       if (preparedTarget.current !== `${provider}:${model}`) throw new Error('AI 供應商或模型已變更，請重新預覽。');
-      const currentSignature = () => job === 'aspects' || job === 'scenarioPre' || job === 'scenarioPost' || job === 'classroomKit' ? scenarioRef.current.scope : job === 'blueprint' ? itemStateRef.current.signature : job === 'splitPre' || job === 'splitPost' || job === 'rePre' || job === 'rePost' ? sourceSignature(workspaceRef.current.projects.find(row => row.id === plan.projectId)!) : job === 'lesson' ? JSON.stringify({ design: workspaceRef.current.projects.find(row => row.id === plan.projectId)!.activeDesignId, lesson: workspaceRef.current.projects.find(row => row.id === plan.projectId)!.designs.find(row => row.id === workspaceRef.current.projects.find(row => row.id === plan.projectId)!.activeDesignId)!.activities.find(row => row.id === targetId) }) : singleSignature(draftRef.current);
+      const currentSignature = () => job === 'aspects' || job === 'scenarioPre' || job === 'scenarioPost' || job === 'classroomKit' || job === 'narrativeKit' ? scenarioRef.current.scope : job === 'blueprint' ? itemStateRef.current.signature : job === 'splitPre' || job === 'splitPost' || job === 'rePre' || job === 'rePost' ? sourceSignature(workspaceRef.current.projects.find(row => row.id === plan.projectId)!) : job === 'lesson' ? JSON.stringify({ design: workspaceRef.current.projects.find(row => row.id === plan.projectId)!.activeDesignId, lesson: workspaceRef.current.projects.find(row => row.id === plan.projectId)!.designs.find(row => row.id === workspaceRef.current.projects.find(row => row.id === plan.projectId)!.activeDesignId)!.activities.find(row => row.id === targetId) }) : singleSignature(draftRef.current);
       if (currentSignature() !== plan.sourceSignature) throw new Error('資料已變更，請重新預覽。');
       // 檢查都通過後，教師按下同意就記住（失敗後重試不再詢問），並關閉視窗改顯示等待進度。
       if (!request.auto) { rememberConsent(plan, requestName(job), provider, model); setPending({ ...request, auto: true }); }
@@ -566,8 +596,9 @@ export function SinglePathApp() {
         if (currentSignature() !== plan.sourceSignature) throw new RequestExpired();
         if (job === 'splitPre' || job === 'splitPost' || job === 'rePre' || job === 'rePost') checkCues(job, plan, value, saveAssessmentJob(job, plan, value));
         else if (job === 'classroomKit') decodeClassroomKits(value, kitDesignOf(plan.projectId), kitIdsOf(plan));
+        else if (job === 'narrativeKit') decodeNarrativeKits(value, kitDesignOf(plan.projectId), kitIdsOf(plan));
         else if (job === 'aspects') decodeAspects(value, (plan.payload.indicators as { indicatorId: string }[]).map(row => row.indicatorId), aspectCounts(plan));
-        else if (job === 'scenarioPre' || job === 'scenarioPost') { const aspects = (plan.payload.indicators as { indicatorId: string; aspects: AspectPlan['aspects'] }[]).map(row => ({ indicatorId: row.indicatorId, aspects: row.aspects })); decodeScenarioSets(keepPassingItems(value, aspects, (plan.payload.repair as { priorOutput?: string } | undefined)?.priorOutput), aspects, 'check'); }
+        else if (job === 'scenarioPre' || job === 'scenarioPost') { const aspects = (plan.payload.indicators as { indicatorId: string; aspects: AspectPlan['aspects'] }[]).map(row => ({ indicatorId: row.indicatorId, aspects: row.aspects })); decodeScenarioSets(keepPassingItems(value, aspects, (plan.payload.repair as { priorOutput?: string } | undefined)?.priorOutput), aspects, 'check', (plan.payload[AVOID_KEY] as string[] | undefined) ?? []); }
         else if (job === 'blueprint') { if (!itemStateRef.current.draft) throw new Error('紙筆題位已變更。'); applyBlueprintDraft(itemStateRef.current.draft, plan, value); }
         else if (job === 'extract') validateExtractResult(value);
         else if (job === 'lesson') assertLesson(value, workspaceRef.current.projects.find(row => row.id === plan.projectId)!.designs.find(row => row.id === design.id)!.activities.find(row => row.id === targetId)!);
@@ -578,7 +609,11 @@ export function SinglePathApp() {
       setPending(null); setApproved(false); cueFallback.current = null;
       if (job === 'extract') { const result = validateExtractResult(response.value); setExtraction(result); setSummaryDraft(result.summary); setPicks({ grade: !!result.grade, subject: !!result.subject, title: !!result.title.trim(), topic: !!result.topic.trim(), keywords: result.keywords.length >= 3, periods: result.periods !== null && result.periods <= 12 }); setMessage('擷取結果已回傳；請逐項勾選要採用的欄位，並核對重點摘要。'); }
       else if (job === 'recommend') { const { kept: list, problems } = directionResult(response.value, draft.subject, shortlistHandles(draft)); setDirections(list); setChosenDirection(null); setSelectionOpen(true); setMessage(list.length < 3 ? `AI 修正後仍只有 ${list.length} 個課程方向符合規定，其他方向已略過（${problems.map(plainDirectionProblem).join('；')}）。${list.length > 1 ? '可以從這幾個方向中選一個' : '可以先選這個方向'}，或按「重新請 AI 提出課程方向」。` : `AI 提出 ${list.length} 個課程方向；請先選一個方向，再看條文與四階進程決定課綱與子指標。`); }
-      else if (job === 'classroomKit') commit(setClassroomKits(workspaceRef.current, plan.projectId, decodeClassroomKits(response.value, kitDesignOf(plan.projectId), kitIdsOf(plan))), '課中學習單與課堂表現勾選表已保存，請核對後確認前測。');
+      else if (job === 'classroomKit') {
+        commit(setClassroomKits(workspaceRef.current, plan.projectId, decodeClassroomKits(response.value, kitDesignOf(plan.projectId), kitIdsOf(plan))), '課中學習單與課堂表現勾選表已保存，請核對後確認前測。');
+        if (kitFollowUp.current === 'narrativeKit') { kitFollowUp.current = null; setKitQueue('narrativeKit'); }
+      }
+      else if (job === 'narrativeKit') commit(setNarrativeKits(workspaceRef.current, plan.projectId, decodeNarrativeKits(response.value, kitDesignOf(plan.projectId), kitIdsOf(plan))), '經驗敘述、判讀錨點與課堂參與勾選表已保存，請核對後確認前測。');
       else if (job === 'aspects') {
         const fresh = decodeAspects(response.value, (plan.payload.indicators as { indicatorId: string }[]).map(row => row.indicatorId), aspectCounts(plan));
         // R36：單一子指標重新產生時，只替換該子指標，其他保留。
@@ -589,7 +624,7 @@ export function SinglePathApp() {
       else if (job === 'scenarioPre' || job === 'scenarioPost') {
         const phase = job === 'scenarioPre' ? 'pre' : 'post';
         const aspects = (plan.payload.indicators as { indicatorId: string; aspects: AspectPlan['aspects'] }[]).map(row => ({ indicatorId: row.indicatorId, aspects: row.aspects }));
-        const scenarioSets = decodeScenarioSets(keepPassingItems(response.value, aspects, (plan.payload.repair as { priorOutput?: string } | undefined)?.priorOutput), aspects, `${phase}-${crypto.randomUUID().slice(0, 8)}`);
+        const scenarioSets = decodeScenarioSets(keepPassingItems(response.value, aspects, (plan.payload.repair as { priorOutput?: string } | undefined)?.priorOutput), aspects, `${phase}-${crypto.randomUUID().slice(0, 8)}`, (plan.payload[AVOID_KEY] as string[] | undefined) ?? []);
         if (commit(addScenarioAssessment(workspaceRef.current, plan.projectId, phase, { aspects, scenarioSets }, scenarioRef.current.modes), phase === 'pre' ? '情境進程題前測已保存，請逐題核對後確認。' : '情境進程題後測已保存，請核對後確認前後測。')) { if (phase === 'pre') { deleteAspectDraftIfUsed(workspaceKey, plan.sourceSignature, aspects); setAspectState(current => current && current.scope === plan.sourceSignature && samePlans(current.plans, aspects) ? null : current); } }
       }
       else if (job === 'blueprint') { const current = itemStateRef.current; if (!current.draft) throw new Error('紙筆題位已變更，草稿未套用。'); current.save(applyBlueprintDraft(current.draft, plan, response.value), false); setMessage('AI 已擬好空白題位的逐題藍圖，請逐列核對後按「確認逐題藍圖」。'); }
@@ -738,20 +773,29 @@ export function SinglePathApp() {
     const target = kind === 'student' ? studentPhase ?? 'combined' : teacherPhase ? 'teacher-pre' : kind;
     const label = kind === 'lesson' ? '教案' : kind === 'teacher' ? (format === 'txt' ? '教師判讀提示詞' : teacherPhase ? '教師前測手冊' : '教師手冊') :
       studentPhase ? '學生' + (studentPhase === 'pre' ? '前測' : '後測') + (studentPart === 'choices' ? '選擇卷' : studentPart === 'opens' ? '非選卷' : '完整題本') : '學生合本';
-    const feedback = (message: string) => setExportFeedback({ projectId: project.id, target, message: label + ' ' + formatLabel + '：' + message });
+    const feedback = (message: string, link?: string) => setExportFeedback({ projectId: project.id, target, message: label + ' ' + formatLabel + '：' + message, link });
     exportBusy.current = true;
     setExporting(true);
     feedback('正在準備…');
     try {
+      let file: { name: string; blob: Blob };
       if (format === 'txt') {
         if (kind !== 'teacher') throw new Error('只提供教師用判讀提示詞。');
-        downloadBlob(project.input.title + '・教師判讀提示詞.txt', new Blob([buildPrompt(project)], { type: 'text/plain;charset=utf-8' }));
+        file = { name: project.input.title + '・教師判讀提示詞.txt', blob: new Blob([buildPrompt(project)], { type: 'text/plain;charset=utf-8' }) };
       } else if (kind === 'lesson') {
         const document = buildLessonDocument(project);
-        const blob = format === 'docx' ? await wordBlob(document) : await lessonPdfBlob(project);
-        downloadBlob(document.title + '.' + format, blob);
-      } else await exportDocument(project, kind, format, { studentPhase, studentPart, teacherPhase });
-      feedback('已交由瀏覽器下載。');
+        file = { name: document.title + '.' + format, blob: format === 'docx' ? await wordBlob(document) : await lessonPdfBlob(project) };
+      } else file = await buildExportFile(project, kind, format, { studentPhase, studentPart, teacherPhase });
+      // R42：教師選了 Google 雲端資料夾時改為上傳，否則照舊下載。
+      const { destination, folder, asGoogleDoc } = drive.target;
+      if (destination === 'drive' && folder) {
+        feedback(`正在存到雲端資料夾「${folder.name}」…`);
+        const saved = await uploadToDrive(file.name, file.blob, folder, asGoogleDoc);
+        feedback(`已存到雲端資料夾「${folder.name}」：${saved.name}`, saved.webViewLink);
+      } else {
+        downloadBlob(file.name, file.blob);
+        feedback('已交由瀏覽器下載。');
+      }
     }
     catch (error) { feedback(`未產生。 ${describe(error)}`); } finally {
       exportBusy.current = false;
@@ -786,7 +830,8 @@ export function SinglePathApp() {
   const assessmentDownloadBlock = assessmentBlockReason || (!hasPair ? '配對後測尚未產生。' : !reviewedPair ? '請先核對並確認前後測。' : '');
   const preDownloadBlock = splitPre ? assessmentBlockReason || (pre?.reviewedAt ? '' : '請先核對前測。') : assessmentDownloadBlock;
   const visibleExportFeedback = exportFeedback?.projectId === project.id ? exportFeedback : null;
-  const fileFeedback = (target: string) => visibleExportFeedback?.target === target ? visibleExportFeedback.message : '';
+  const fileFeedback = (target: string) => visibleExportFeedback?.target === target ? visibleExportFeedback : null;
+  const exportFeedbackNote = (row: typeof visibleExportFeedback) => row && <p className="note">{row.message}{row.link ? <> <a href={row.link} target="_blank" rel="noreferrer">開啟檔案</a></> : null}</p>;
   return <div className="sp-app"><a className="sp-skip" href="#main">跳到主要內容</a><header className="sp-header"><div><span className="sp-mark">深</span><div><strong>深學備課室</strong><small>從發想到前後測</small></div></div><div className="sp-header-actions"><button type="button" onClick={newCourse}>新課程發想</button><button type="button" onClick={() => { cancelOnNavigation(); setMessage(''); setView('project'); }}>已有專案</button><button type="button" aria-expanded={guideOpen} onClick={() => setGuideOpen(!guideOpen)}>使用說明</button></div></header><AiSetupPanel />{guideOpen && <GuidePage onClose={() => setGuideOpen(false)} />}
     <main id="main" className="sp-main" tabIndex={-1}><div className="sp-progress" aria-label="單一路徑進度">{stageLabels.map((label, index) => <span key={label} aria-current={index === progress ? 'step' : undefined} className={index === progress ? 'current' : isStepDone(index) ? 'done' : ''}>{index === progress && <span className="sp-step-count">第 {index + 1}／{stageLabels.length} 步：</span>}<span className="sp-step-num">{index + 1}. </span>{label}</span>)}</div><p role="status" className={message.includes('未') || draftLocked || workspaceLocked ? 'status warning' : 'status'}>{message}</p>
     <DiagnosticsBar key={diagnosticsCourseId} courseId={diagnosticsCourseId} />
@@ -833,7 +878,7 @@ export function SinglePathApp() {
       </>}
       {draft.stage === 'goals' && <section className="card"><h2>先核對學習目標與成功表現</h2><p>學科／課綱與 NPDL 目標分開看。這些是預期表現，尚非學生結果。</p>{draft.goals.length === 0 && <button type="button" className="primary" onClick={() => prepare('goals')}>產生目標草稿</button>}{draft.goals.map((goal, index) => <div className="sp-edit-group" key={`${goal.kind}-${goal.indicatorId}`}><h3>{goal.kind === 'academic' ? '學科／課綱目標' : `NPDL：${indicators.entries.find(row => row.id === goal.indicatorId)?.name}`}</h3><label>學習目標<textarea value={goal.text} onChange={event => saveDraft({ ...draft, goals: draft.goals.map((row, at) => at === index ? { ...row, text: event.target.value } : row), criteria: [], activities: [] })} /></label><label>可觀察成功表現<textarea value={goal.success} onChange={event => saveDraft({ ...draft, goals: draft.goals.map((row, at) => at === index ? { ...row, success: event.target.value } : row), criteria: [], activities: [] })} /></label></div>)}<div className="actions"><button type="button" onClick={() => prepare('goals')}>重新產生這一段</button><button type="button" className="primary" onClick={advance}>確認目標，下一步看證據</button></div></section>}
       {draft.stage === 'evidence' && <section className="card"><h2>確認可觀察證據與共同規準</h2><p>每個子指標一組規準，四階並排比較；需要調整時按「修改這組規準」。前後測沿用確認後的版本。</p>{draft.criteria.length === 0 && <button type="button" className="primary" onClick={() => prepare('evidence')}>產生證據與規準草稿</button>}{draft.criteria.map((criterion, index) => <CriterionReview key={criterion.indicatorId} name={indicators.entries.find(row => row.id === criterion.indicatorId)?.name ?? criterion.indicatorId} criterion={criterion} note={<MindsetNote texts={[criterion.label, criterion.observable, criterion.scope, ...criterion.stages]} />} onChange={next => saveDraft({ ...draft, criteria: draft.criteria.map((row, at) => at === index ? next : row), activities: [] })} />)}<div className="actions"><button type="button" onClick={() => prepare('evidence')}>重新產生這一段</button><button type="button" className="primary" onClick={advance}>確認規準，下一步看活動</button></div></section>}
-      {draft.stage === 'activities' && <section className="card"><h2>先看核心活動安排是否合理</h2><p>此處只看活動方向與節數分配；確認後才展開逐節教案。</p>{draft.activities.length === 0 && <button type="button" className="primary" onClick={() => prepare('activities')}>產生核心活動提案</button>}{draft.activities.map((activity, index) => <div className="sp-edit-group" key={index}><h3>核心活動 {index + 1}</h3><div className="fields"><label>名稱<input value={activity.name} onChange={event => saveDraft({ ...draft, activities: draft.activities.map((row, at) => at === index ? { ...row, name: event.target.value } : row) })} /></label><label>節數<input type="number" min="1" max="12" value={activity.periods} onChange={event => saveDraft({ ...draft, activities: draft.activities.map((row, at) => at === index ? { ...row, periods: Number(event.target.value) } : row) })} /></label></div><label>主要任務<textarea value={activity.task} onChange={event => saveDraft({ ...draft, activities: draft.activities.map((row, at) => at === index ? { ...row, task: event.target.value } : row) })} /></label><label>預期證據<textarea value={activity.evidence} onChange={event => saveDraft({ ...draft, activities: draft.activities.map((row, at) => at === index ? { ...row, evidence: event.target.value } : row) })} /></label></div>)}<p>合計 {draft.activities.reduce((sum, row) => sum + row.periods, 0)}／{draft.periods} 節</p><div className="actions"><button type="button" onClick={() => prepare('activities')}>重新產生這一段</button><button type="button" className="primary" onClick={advance}>確認安排，產生完整課程</button></div></section>}
+      {draft.stage === 'activities' && <section className="card"><h2>先看核心活動安排是否合理</h2><p>此處只看活動方向與節數分配；確認後才展開逐節教案。</p>{draft.activities.length === 0 && <button type="button" className="primary" onClick={() => prepare('activities')}>產生核心活動提案</button>}{draft.activities.map((activity, index) => { const loadNotice = activity.periods === 1 ? activityPeriodLoadNotice(`${activity.task}\n${activity.evidence}`) : null; return <div className="sp-edit-group" key={index}><h3>核心活動 {index + 1}</h3><div className="fields"><label>名稱<input value={activity.name} onChange={event => saveDraft({ ...draft, activities: draft.activities.map((row, at) => at === index ? { ...row, name: event.target.value } : row) })} /></label><label>節數<input type="number" min="1" max="12" value={activity.periods} onChange={event => saveDraft({ ...draft, activities: draft.activities.map((row, at) => at === index ? { ...row, periods: Number(event.target.value) } : row) })} /></label></div><label>主要任務<textarea value={activity.task} onChange={event => saveDraft({ ...draft, activities: draft.activities.map((row, at) => at === index ? { ...row, task: event.target.value } : row) })} /></label><label>預期證據<textarea value={activity.evidence} onChange={event => saveDraft({ ...draft, activities: draft.activities.map((row, at) => at === index ? { ...row, evidence: event.target.value } : row) })} /></label>{loadNotice && <p className="notice" role="status">{loadNotice}</p>}</div>; })}<p>合計 {draft.activities.reduce((sum, row) => sum + row.periods, 0)}／{draft.periods} 節</p><div className="actions"><button type="button" onClick={() => prepare('activities')}>重新產生這一段</button><button type="button" className="primary" onClick={advance}>確認安排，產生完整課程</button></div></section>}
       {draft.stage === 'full' && <section className="card"><h2>產生完整逐節教案</h2><p>已核對目標、證據與核心活動。AI 會依這些決定展開每節任務、學科用途、學生產出、形成性回饋及四階支持。生成後仍需教師確認。</p><button type="button" className="primary" onClick={() => prepare('full')}>產生完整逐節教案</button>{Boolean(fullCandidate) && (() => { const candidate = fullCandidate as DesignVersion; return <FullLessonPreview key={candidate.summary} summary={candidate.summary} lessons={candidate.activities} coreNames={Object.fromEntries(draft.activities.map((row, index) => [`core-${index + 1}`, row.name]))} onAccept={acceptFull} />; })()}</section>}
       </>}
     </> : <>
@@ -888,7 +933,7 @@ export function SinglePathApp() {
         {!stagedBase && design.confirmedAt && aspectConflict === scenarioScope && <p className="notice" role="alert">另一個分頁改過這份面向草稿，本頁的修改暫停保存，以免互相覆蓋。<button type="button" onClick={() => { setAspectState(loadAspectDraft(workspaceKey, scenarioScope)); setAspectConflict(null); }}>改用另一個分頁的版本</button></p>}
         {!stagedBase && design.confirmedAt && <ScenarioPanel hasScenario={scenarioIds.length > 0} aspectPlans={aspectPlans} aspectsConfirmed={aspectsConfirmed} aspectsFromPre={!ownAspects && !!savedAspects?.length}
           pre={scenarioPre} post={scenarioPre && post?.parentPreId === scenarioPre.id ? post : undefined} blocked={busy || workspaceLocked || !!pending}
-          onGenerateKit={() => prepare('classroomKit')} activityName={id => project.designs.find(row => row.id === (scenarioPre?.designId ?? design.id))?.activities.find(row => row.id === id)?.name ?? id} criterionLabel={id => project.designs.find(row => row.id === (scenarioPre?.designId ?? design.id))?.criteria.find(row => row.id === id)?.label ?? id}
+          modes={selectedModes} onGenerateKits={generateClassroomKits} activityName={id => project.designs.find(row => row.id === (scenarioPre?.designId ?? design.id))?.activities.find(row => row.id === id)?.name ?? id} criterionLabel={id => project.designs.find(row => row.id === (scenarioPre?.designId ?? design.id))?.criteria.find(row => row.id === id)?.label ?? id}
           onDraftAspects={() => prepare('aspects')} onRegenerateAspect={id => prepare('aspects', id)} onAspectsChange={plans => setAspectState({ scope: scenarioScope, plans, confirmed: false })}
           onConfirmAspects={() => aspectPlans && setAspectState({ scope: scenarioScope, plans: aspectPlans, confirmed: true })}
           onGenerate={phase => {
@@ -909,7 +954,8 @@ export function SinglePathApp() {
         <p>Word 可編輯；PDF 保留繁體中文版面，文字可選取與搜尋。教師手冊和學生卷分開，學生題本不含答案。</p>
         {modeNotice}
         {assessmentDownloadBlock && !assessmentBlockReason && <p className="notice">{assessmentDownloadBlock} <button type="button" onClick={() => setProjectPage('assessment')}>回到前後測</button></p>}
-        <p className="sp-export-announcement" role="status">{visibleExportFeedback?.message}</p>
+        <GooglePanel project={project} blocks={{ pre: preDownloadBlock, post: assessmentDownloadBlock }} drive={drive} />
+        <p className="sp-export-announcement" role="status">{visibleExportFeedback?.message}{visibleExportFeedback?.link ? <> <a href={visibleExportFeedback.link} target="_blank" rel="noreferrer">開啟檔案</a></> : null}</p>
         <div className="sp-student-downloads">
           <h3>學生題本｜分開印發</h3>
           {(hasParts(pre) || hasParts(post)) && <p className="note">可先收回選擇卷，再發非選卷。</p>}
@@ -928,26 +974,26 @@ export function SinglePathApp() {
                         onClick={() => { if (!phaseBlock) void exportFile('student', format, phase, part); }}>{formatLabel}</button>;
                     })}
                   </div></div>)}
-                {fileFeedback(phase) && <p className="note">{fileFeedback(phase)}</p>}
+                {exportFeedbackNote(fileFeedback(phase))}
               </div>;
             })}
           </div>
           <details><summary>下載學生前後測合本</summary><div className="actions">
             <button type="button" disabled={!!assessmentDownloadBlock} aria-disabled={exporting} onClick={() => { if (!assessmentDownloadBlock) void exportFile('student', 'docx'); }}>下載學生合本 Word</button>
             <button type="button" disabled={!!assessmentDownloadBlock} aria-disabled={exporting} onClick={() => { if (!assessmentDownloadBlock) void exportFile('student', 'pdf'); }}>下載學生合本 PDF</button>
-          </div>{fileFeedback('combined') && <p className="note">{fileFeedback('combined')}</p>}</details>
+          </div>{exportFeedbackNote(fileFeedback('combined'))}</details>
         </div>
         <div className="sp-downloads sp-phase-downloads">
           <div><h3>教師答案與判讀手冊</h3>
           {splitPre && <div className="actions">{(['pdf', 'docx'] as const).map(format => <button key={format} type="button" disabled={!!preDownloadBlock} aria-disabled={exporting} onClick={() => { void exportFile('teacher', format, undefined, undefined, 'pre'); }}>下載教師前測手冊 {format === 'pdf' ? 'PDF' : 'Word'}</button>)}</div>}
-          {fileFeedback('teacher-pre') && <p className="note">{fileFeedback('teacher-pre')}</p>}
+          {exportFeedbackNote(fileFeedback('teacher-pre'))}
           <div className="actions">
             {(['pdf', 'docx', 'txt'] as const).map(format => <button key={format} type="button" disabled={!!assessmentDownloadBlock} aria-disabled={exporting} onClick={() => { if (!assessmentDownloadBlock) void exportFile('teacher', format); }}>{({ pdf: '下載教師手冊 PDF', docx: '下載教師手冊 Word', txt: '下載判讀提示詞 TXT' })[format]}</button>)}
-          </div>{fileFeedback('teacher') && <p className="note">{fileFeedback('teacher')}</p>}</div>
+          </div>{exportFeedbackNote(fileFeedback('teacher'))}</div>
           <div><h3>完整課程教案</h3><div className="actions">
             <button type="button" aria-disabled={exporting} onClick={() => { void exportFile('lesson', 'docx'); }}>下載教案 Word</button>
             <button type="button" aria-disabled={exporting} onClick={() => { void exportFile('lesson', 'pdf'); }}>下載教案 PDF</button>
-          </div>{fileFeedback('lesson') && <p className="note">{fileFeedback('lesson')}</p>}</div>
+          </div>{exportFeedbackNote(fileFeedback('lesson'))}</div>
         </div>
         <p className="note">題組確認不代表已施測；工具不收學生作答，也不自動判級。</p>
       </section>}

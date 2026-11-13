@@ -40,7 +40,10 @@ export function reviewAssessment(workspace: Workspace, projectId: string, id: st
   const design = project.designs.find(d => d.id === assessment.designId)!;
   if (!design.confirmedAt) throw new Error('題組引用的設計尚未確認。請展開「AI 生成、版本確認與文件」，依序按「核對此起點、課綱與子指標」、「確認此設計的整合規則」、「確認目前設計」（已完成的步驟不用重按），再確認這份題組。');
   // R41：有課中觀察子指標的情境進程題前測，須先有學習單與課堂表現勾選表。
-  if (!assessment.reviewedAt && assessment.format === 'scenario-progression-v1' && assessment.phase === 'pre' && (assessment.sets ?? []).length && !(assessment.classroomKits ?? []).length) throw new Error('請先產生課中學習單與課堂表現勾選表，再確認前測。');
+  if (!assessment.reviewedAt && assessment.format === 'scenario-progression-v1' && assessment.phase === 'pre' && (assessment.sets ?? []).length) {
+    const covered = [...(assessment.classroomKits ?? []).map(kit => kit.indicatorId), ...(assessment.narrativeKits ?? []).map(kit => kit.indicatorId)];
+    if (covered.length !== (assessment.sets ?? []).length || (assessment.sets ?? []).some(set => !covered.includes(set.indicatorId))) throw new Error('請先產生每個子指標的學習單或經驗敘述材料，再確認前測。');
+  }
   if (inputSignature(project.input) !== inputSignature(design.inputSnapshot)) throw new Error('課程草稿已變更，請先核對題組來源。');
   if (!assessment.reviewedAt) assessment.reviewedAt = Math.max(Date.now(), assessment.createdAt, design.confirmedAt);
   return validateWorkspace(next);

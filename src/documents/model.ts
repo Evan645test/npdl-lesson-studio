@@ -6,6 +6,7 @@ import { isCognitiveOnly } from '../data/assessability';
 import { estimateAssessmentDuration } from '../domain/thresholdSet';
 import { buildPrompt } from './prompt';
 import type { ClassroomKit } from '../domain/classroomKit';
+import { NARRATIVE_COMPARISON_NOTE, NARRATIVE_UNJUDGABLE_NOTE, checklistHeading, narrativeNote, type NarrativeKit } from '../domain/narrativeKit';
 import { fixedReflectionFor, fixedReflections, NO_EVIDENCE_LABEL, REFLECTION_NOTE, SELF_ASSESSMENT_NOTE } from './fixedReflection';
 import curriculum from '../data/curriculum.json';
 import indicators from '../data/indicators.json';
@@ -278,7 +279,7 @@ export function buildDocument(project: Project, audience: Audience, options: Doc
       set.items.forEach((item, i) => {
         const aspect = plan?.aspects.find(x => x.id === item.aspectId);
         const head = (audience === 'student' ? '［　］ ' : '') + `${i + 1}. ${item.scenario}\n${item.prompt}`;
-        const opts = item.options.map(o => `${o.label}. ${o.text}` + (audience === 'teacher' ? `　（${STAGES[o.stage]}）` : ''));
+        const opts = item.options.map(o => `${o.label}. ${o.text}` + (audience === 'teacher' ? `　（${STAGES[o.stage]}）\nNPDL 原文：${progressionLines(set.indicatorId)[o.stage].map(line => line.text).join('；')}` : ''));
         if (audience === 'student') {
           add('paragraph', [head, ...opts].join('\n'), { keepTogether: true, continuation: (continuation ?? '') + `｜情境題 ${g + 1}-${i + 1}` });
           add('paragraph', item.reasonPrompt, { keepTogether: true, answerLines: 4, continuation: (continuation ?? '') + `｜情境題 ${g + 1}-${i + 1} 理由` });
@@ -310,11 +311,35 @@ export function buildDocument(project: Project, audience: Audience, options: Doc
     add('paragraph', `學習單題目（學生在課堂活動中填寫）：\n${kit.worksheet.questions.map((q, i) => `${i + 1}.【${activityName(q.activityId)}】${q.prompt}`).join('\n')}`);
     kit.checklist.forEach(row => {
       const criterion = design.criteria.find(c => c.id === row.criterionId);
-      add('paragraph', `課堂表現勾選表｜${criterion?.label ?? row.criterionId}：${row.focus}`, { keepTogether: true });
+      add('paragraph', `課堂表現勾選表｜${checklistHeading(criterion?.label ?? row.criterionId, row.focus)}`, { keepTogether: true });
       table(['四階', '看得見的行為'], row.behaviors.map((text, s) => [STAGES[s], text]), [1, 5]);
       table(['座號', ...STAGES, '尚無法判讀', '看到的事實'], Array.from({ length: 8 }, () => ['', '□', '□', '□', '□', '□', '']), [1, 1, 1, 1, 1, 1.2, 3]);
     });
     add('paragraph', '依課堂觀察與學習單內容勾選最接近的一階；沒有觀察到足以判斷的行為勾「尚無法判讀」，不當最低階。表格列數不足時請依班級人數影印。');
+  }
+  // R43：方式 F 的前後兩題、共用錨點與教師課堂參與勾選表。
+  function narrativeSection(kit: NarrativeKit, phase: 'pre' | 'post') {
+    const indicator = indicators.entries.find(row => row.id === kit.indicatorId);
+    const questions = kit[phase];
+    const title = phase === 'pre' ? '經驗敘述前測' : '課程參與敘述後測';
+    add('heading', `${title}：${indicator?.name ?? kit.indicatorId}`, { pageBreakBefore: audience === 'student' });
+    questions.forEach((question, index) => {
+      if (audience === 'student') {
+        add('paragraph', `${index + 1}. ${question.scenario ? '情境：' + question.scenario + '\n' : ''}${question.prompt}\n回想提示：${question.recall}${narrativeNote(question) ? '\n' + narrativeNote(question) : ''}`, { keepTogether: true });
+        question.steps.forEach((step, stepIndex) => add('paragraph', `${index + 1}-${stepIndex + 1}. ${step.prompt}\n句子開頭：${step.starter}`, { keepTogether: true, answerLines: 3 }));
+      } else {
+        add('paragraph', `${index + 1}. ${question.scenario ? '情境：' + question.scenario + '\n' : ''}${question.prompt}\n回想提示：${question.recall}${narrativeNote(question) ? '\n' + narrativeNote(question) : ''}\n${question.steps.map((step, stepIndex) => `${stepIndex + 1}. ${step.prompt}（句子開頭：${step.starter}）`).join('\n')}`, { keepTogether: true });
+      }
+    });
+    if (audience === 'teacher') {
+      add('paragraph', ['判讀錨點（前後測共用；依學生敘述判讀）', ...kit.anchors.map((anchor, index) => `${STAGES[index]}：${anchor}`), NARRATIVE_UNJUDGABLE_NOTE, NARRATIVE_COMPARISON_NOTE].join('\n'), { keepTogether: true });
+      kit.checklist.forEach(row => {
+        const criterion = design.criteria.find(c => c.id === row.criterionId);
+        add('paragraph', `課堂表現勾選表｜${checklistHeading(criterion?.label ?? row.criterionId, row.focus)}`, { keepTogether: true });
+        table(['四階', '看得見的行為'], row.behaviors.map((behavior, index) => [STAGES[index], behavior]), [1, 5]);
+        table(['座號', ...STAGES, '尚無法判讀', '看到的事實'], Array.from({ length: 8 }, () => ['', '□', '□', '□', '□', '□', '']), [1, 1, 1, 1, 1.2, 1.4, 3]);
+      });
+    }
   }
   // R31：情境自陳題。學生版選項已打亂、不顯示階段；教師版附階段對照與配對說明。
   function selfReportSection(value: NonNullable<AssessmentVersion['selfReport']>) {
@@ -344,9 +369,10 @@ export function buildDocument(project: Project, audience: Audience, options: Doc
       if (a.selfReport && part !== 'opens') selfReportSection(a.selfReport);
       if (part) return;
       const kitOf = (id: string) => a.format === 'scenario-progression-v1' ? (pre?.classroomKits ?? []).find(k => k.indicatorId === id) : undefined;
-      const eSets = (a.sets ?? []).filter(set => set.mode === 'E'), kitted = eSets.filter(set => kitOf(set.indicatorId));
+      const narrativeOf = (id: string) => a.format === 'scenario-progression-v1' ? (pre?.narrativeKits ?? []).find(k => k.indicatorId === id) : undefined;
+      const eSets = (a.sets ?? []).filter(set => set.mode === 'E'), kitted = eSets.filter(set => kitOf(set.indicatorId) || narrativeOf(set.indicatorId));
       if (!paper.length && !(a.scenarioSets ?? []).length) add('paragraph', kitted.length ? (audience === 'student' ? '本次沒有紙筆題；請在課堂活動中完成下方學習單。' : '本次沒有紙筆題；以下為課堂學習單與表現勾選表。') : (audience === 'student' ? '本次沒有紙筆題；所有子指標都採課中評量，請完成下方自評。' : '本次沒有紙筆題；以下為課中評量的觀察表。'));
-      eSets.forEach((set, i) => { const kit = kitOf(set.indicatorId); if (!kit) itemSet(set, i + 1); else if (a.phase === 'pre') kitSection(kit); else if (audience === 'teacher') add('paragraph', `${indicators.entries.find(x => x.id === set.indicatorId)?.name ?? set.indicatorId}：課中學習單與課堂表現勾選表見前測部分，前後測共用。`); });
+      eSets.forEach((set, i) => { const kit = kitOf(set.indicatorId), narrative = narrativeOf(set.indicatorId); if (!kit && !narrative) itemSet(set, i + 1); else if (kit && a.phase === 'pre') kitSection(kit); else if (narrative) narrativeSection(narrative, a.phase); else if (audience === 'teacher') add('paragraph', `${indicators.entries.find(x => x.id === set.indicatorId)?.name ?? set.indicatorId}：課中學習單與課堂表現勾選表見前測部分，前後測共用。`); });
       return;
     }
     if (audience === 'teacher') add('paragraph', `題組版本 ${a.id}／設計 ${a.designId}／規準 ${a.rubricVersion}／配對前測 ${a.parentPreId ?? '無'}。${a.reviewedAt ? '教師已確認題組' : '題組待確認'}；${a.administeredAt ? `已記錄實際施測（${new Date(a.administeredAt).toISOString()}）` : '尚未記錄施測'}。`);
@@ -373,6 +399,13 @@ export function buildDocument(project: Project, audience: Audience, options: Doc
   if (phaseOnly !== 'pre') assessment(post, '後測' + (partLabel || '題本'));
   continuation = undefined;
   if (audience === 'teacher' && sets) {
+    // R43：方式 F 只並列兩次判讀與證據，教師自行核對比較條件，工具不計算變化。
+    for (const kit of pre?.narrativeKits ?? []) {
+      const name = indicators.entries.find(row => row.id === kit.indicatorId)?.name ?? kit.indicatorId;
+      add('heading', `經驗敘述前後判讀紀錄｜${name}`, { pageBreakBefore: true });
+      table(['座號', '前測判讀', '後測判讀', '前測敘述依據', '後測參與／改變依據'], Array.from({ length: 8 }, () => ['', '', '', '', '']), [1, 1.2, 1.2, 3, 3]);
+      add('paragraph', NARRATIVE_COMPARISON_NOTE);
+    }
     const paperPhases = [pre, post].filter(a => (a?.sets ?? []).some(set => set.mode !== 'E'));
     if (paperPhases.length || scenarioPhases.length) add('heading', '班級彙整表（空白，請依測次填寫）', { pageBreakBefore: true });
     for (const a of scenarioPhases) for (const plan of a.aspects ?? []) {

@@ -98,6 +98,8 @@ export interface AssessmentVersion {
   scenarioSets?: import('./scenarioProgression').ScenarioSet[];
   // R41：方式 E 子指標的學習單與課堂表現勾選表（AI 產生、教師核對；只存在前測，後測沿用）。
   classroomKits?: import('./classroomKit').ClassroomKit[];
+  // R43：方式 F 經驗敘述前後題、判讀錨點與課堂參與勾選表；只存在前測，後測沿用。
+  narrativeKits?: import('./narrativeKit').NarrativeKit[];
 }
 export interface Project {
   id: string; input: CourseInput; designs: DesignVersion[]; activeDesignId: string;

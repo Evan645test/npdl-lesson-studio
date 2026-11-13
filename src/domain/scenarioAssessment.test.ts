@@ -48,6 +48,7 @@ describe('R33 情境進程題文件', () => {
     const reviewed = reviewAssessment(first, p.id, project.activePreId!).projects[0];
     const teacher = buildDocument(reviewed, 'teacher', { teacherPhase: 'pre' }).blocks.map(b => b.text).join('\n');
     expect(teacher).toContain('（精熟）');
+    expect(teacher).toContain('NPDL 原文：');
     expect(teacher).toContain('判讀錨點（依理由判讀；選項只作參考）');
     expect(teacher).toContain('情境進程題不看對錯');
     expect(JSON.stringify(buildDocument(reviewed, 'teacher', { teacherPhase: 'pre' }).blocks)).toContain('整體位置（教師整體判斷）');

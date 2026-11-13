@@ -17,12 +17,25 @@ const KEYS = ['limited', 'emerging', 'developing', 'proficient'] as const;
 const LABELS = ['A', 'B', 'C', 'D'] as const;
 const STAGE_WORDS = /證據有限|萌芽|發展階段|精熟|第[一二三四1-4]階|尚無法判讀/u;
 // R36：新產生的選項不可帶自貶語氣或完整性評價（讓學生一眼排除低階、選出高階）。只在解析 AI 回應時檢查，已保存題本不受影響。
-const SELF_DOUBT = /不太確定|不確定|不知道|不清楚|隨便|不管|懶得|不會特別|沒想過|直接覺得|算了/u;
+const SELF_DOUBT = /不太確定|不太能確定|無法判斷|不確定|不知道|不清楚|隨便|不管|懶得|不會特別|沒想過|直接覺得|算了/u;
 const PRAISE = /最好|最佳|最正確|最完整|最全面|全面地|徹底|所有可能/u;
 // R36 使用者決定（2026-11-12）：後測課程情境的精熟做法常需兩個動作，實跑 4 次皆因 1.6 倍／50 字退件；放寬為 1.8 倍／60 字。
 export const OPTION_MIN = 15, OPTION_MAX = 60, OPTION_RATIO = 1.8;
+// R43（2026-11-14 使用者決定）：新產生的選項四個字數差在 20% 以內（最長 ≤ 最短 × 1.2），前測不得用本單元專有名詞。
+// R43 實跑後使用者決定（2026-11-14）：20% 與「40–60 字、相差 8 字內」GPT-4.1 連續失敗，字數規則回到 R36／R42 的 1.8 倍；選項依四階特徵寫的提示詞保留。
+export const AVOID_KEY = 'avoidTerms';
+// 從課程名稱與已選學習內容抽出本單元專有名詞，給前測選項避開（啟發式；提示詞仍是主要約束）。
+const COMMON_PHRASE = /^(?:如何|為什麼|什麼|哪些|有哪些|差異|不同|之間|相關|影響|方式|方法|問題|能力|學生|生活|日常|資料|觀察|說明|比較|分析|了解|認識|探討|運用|應用|表現|情形|現象|三個面向|面向|校園)$|(?:如何|為什麼|哪些)/u;
+export function unitTerms(texts: string[]): string[] {
+  const terms = texts.flatMap(t => t.split(/[、，。；：,.;:\s（）()「」『』及與和或包含是的在為]/u)).map(t => t.trim()).filter(t => t.length >= 3 && t.length <= 10 && /^[\p{Script=Han}A-Za-z0-9]+$/u.test(t));
+  // R43（Codex 複審）：去掉一般用語，避免把日常片語當成專有名詞而大量退件。
+  return [...new Set(terms)].filter(t => !COMMON_PHRASE.test(t)).slice(0, 40);
+}
 // 已保存題本與新題共用的「最高階明顯較長」門檻（R34 為 1.4 倍）。
 export const TOP_LONGER = 1.7;
+// R44（2026-11-14 使用者要求解決選項偏長）：AI 很難精準控制中文字數，改請 AI 每一階寫兩種詳略不同的寫法，
+// 由程式挑出四個字數最接近、且精熟不明顯最長的組合；精熟選項比其他三個中最長者多出 TOP_LEAD 字以上即退件。
+export const TOP_LEAD = 4, VARIANTS = 2;
 
 // R35：anchors 是面向層級的四階判讀錨點，教師確認後前後測共用（同一把尺）；舊資料沒有時，題本各自產生。
 export interface Aspect { id: string; label: string; description: string; anchors?: [string, string, string, string] }
@@ -117,8 +130,10 @@ const ITEM_INSTRUCTIONS = (phase: Phase) => [
   phase === 'pre'
     ? '前測：scenario 用學生熟悉、不需要本單元專業知識的生活情境（80–220 字），不要先教會課程內容。'
     : '後測：scenario 改用本課程的主題與活動情境（80–220 字），不得沿用前測情境；同一面向維持相同的能力重點與難度。',
-  '每個面向寫一題：prompt 問學生在情境中會怎麼做；options 四個做法用第一人稱寫，分別對應該面向在 limited（證據有限）、emerging（萌芽）、developing（發展）、proficient（精熟）的典型做法，依據四階原文與面向說明。',
-  '選項寫法（學生不能從字面猜出哪個較高階）：(1) 四個都是認真的高中生在時間、人力或資源有限時真的會選的做法，各有一個說得通的好處；不寫偷懶、放棄或沒想法的做法，不用「不太確定、不知道、隨便、直接覺得、不會特別」等自貶語氣。(2) 階段差異只放在「注意到哪些條件或人、有沒有比較或確認、能不能依情境調整」，不放在做的事情多寡或努力程度；高階不是低階再多加幾個步驟，不用列舉一長串檢查項目。(3) 每個選項 20–40 個字（一個做法＋一個簡短理由），四個選項字數彼此相差不超過 10 字。(4) 情境要有真實的取捨，讓高階做法也有代價。(5) 不得出現階段名稱，或「最好、最完整、全面、徹底」等評價字詞。',
+  '每個面向寫一題：prompt 問學生在情境中會怎麼做；options 四個做法用第一人稱寫，分別對應該面向在 limited（證據有限）、emerging（萌芽）、developing（發展）、proficient（精熟）的典型做法。',
+  '選項與四階進程的對應（R43）：先讀該子指標 stages 的四階原文，抓出每一階「學生在想什麼、注意到什麼、怎麼判斷」的特徵（例如只看眼前一個線索／有人提醒才看到關聯／自己把幾個線索連起來比較／歸納出規律並說明在哪裡不適用），每個選項只寫該階特徵在這個情境中會是什麼樣的想法或做法，不是把低階做法再加上更多步驟或更專業的詞。',
+  '選項寫法（學生不能從字面猜出哪個較高階）：(1) 四個都是認真的高中生真的會選的做法，各自說出一個說得通的好處；不寫偷懶、放棄或沒想法的做法，不用「不太確定、不知道、隨便、直接覺得、不會特別」等自貶語氣。(2) 用日常白話，四個選項用同樣的語氣與詳細程度；高階不得用更多術語、數字方法或長串列舉。(3) options 每一階給兩種寫法（陣列兩項）：同一個做法與好處，一種較精簡（約 22–28 字）、一種較完整（約 30–38 字），不要換成別的做法；程式會從中挑出四個長度最接近的組合，所以精熟的兩種寫法都不可以比其他階明顯長。(4) 情境要有真實的取捨，讓高階做法也有代價。(5) 不得出現階段名稱，或「最好、最完整、全面、徹底」等評價字詞。',
+  'avoidTerms 有提供時（前測）：題幹、情境與選項都不得使用其中的詞，也不得使用本單元還沒教的學科專有名詞或指標（例如某種指數、公式名稱），改用學生日常會說的話。',
   'reasonPrompt 是一句問句，請學生說明為什麼選這個做法，以及這個做法可能遇到的問題或代價（不要只問「你會怎麼做」，避免學生只複述選項）。',
   'extension 是每個子指標的第 4 題（延伸題，不另給情境）：prompt 用一到兩句請學生回顧前 3 題，挑一題說明自己為什麼這樣選、這樣做可能付出什麼代價；若三題選擇的方向不同，也說明為什麼會不同。anchors 四階各寫一段教師判讀延伸題的線索（例如是否比較不同情境、是否說出判斷依據與限制），不寫分數、不寫階段名稱以外的評語。',
   '若面向已附 anchors（教師確認的判讀錨點），四個選項要分別對準同階錨點，題本不再另寫錨點；若 outputSchema 要求 anchors，四階各寫一段「這一階的學生通常會這樣說或這樣做」的具體描述，對準面向說明與四階原文，不寫分數。',
@@ -128,9 +143,14 @@ const ITEM_INSTRUCTIONS = (phase: Phase) => [
 
 export function buildScenarioPlan(projectId: string, aspects: AspectPlan[], phase: Phase, course: Record<string, unknown>, signature: string, courseContext?: Record<string, unknown>, criteria?: CriterionRef[]): RequestPlan {
   const shared = aspects.every(plan => plan.aspects.every(a => a.anchors));
-  const item = shared ? object({ scenario: str, prompt: str, options: stageObject(), reasonPrompt: str }) : object({ scenario: str, prompt: str, options: stageObject(), reasonPrompt: str, anchors: stageObject() });
+  const variants = object(Object.fromEntries(KEYS.map(key => [key, { type: 'array', minItems: VARIANTS, maxItems: VARIANTS, items: str }])));
+  const item = shared ? object({ scenario: str, prompt: str, options: variants, reasonPrompt: str }) : object({ scenario: str, prompt: str, options: variants, reasonPrompt: str, anchors: stageObject() });
+  const avoid = phase === 'pre' ? unitTerms([String(course.title ?? ''), String(course.topic ?? ''), ...((course.contentTexts as string[] | undefined) ?? [])]) : [];
+  const { contentTexts: _omit, ...courseInfo } = course;
+  void _omit;
   const payload = {
-    task: phase === 'pre' ? 'scenario-progression-pre' : 'scenario-progression-post', phase, course,
+    task: phase === 'pre' ? 'scenario-progression-pre' : 'scenario-progression-post', phase, course: courseInfo,
+    ...(avoid.length ? { [AVOID_KEY]: avoid } : {}),
     ...(phase === 'post' && courseContext ? { courseContext } : {}),
     indicators: aspects.map(plan => { const entry = indicatorOf(plan.indicatorId), own = criteriaOf(criteria, plan.indicatorId); return { indicatorId: plan.indicatorId, name: entry.name, stages: entry.stages, aspects: plan.aspects, ...(own.length ? { criteria: own } : {}) }; }),
     // R41：每個子指標另有延伸題（extension）；舊面向少於 3 個時照樣附延伸題。
@@ -139,7 +159,7 @@ export function buildScenarioPlan(projectId: string, aspects: AspectPlan[], phas
   return { kind: phase, projectId, sourceSignature: signature, payload, instructions: ITEM_INSTRUCTIONS(phase), structuredResponse: true, attempt: 0 };
 }
 
-export function decodeScenarioSets(raw: unknown, aspects: AspectPlan[], idPrefix: string): ScenarioSet[] {
+export function decodeScenarioSets(raw: unknown, aspects: AspectPlan[], idPrefix: string, avoidTerms: string[] = []): ScenarioSet[] {
   const ids = aspects.map(p => p.indicatorId);
   if (!raw || typeof raw !== 'object' || Array.isArray(raw) || Object.keys(raw).sort().join() !== [...ids].sort().join()) throw new Error('題本回應的子指標不符。');
   // R36：逐題檢查並一次列出所有不合格題目，修復請求與教師訊息都看得到每一題的具體原因。
@@ -155,6 +175,7 @@ export function decodeScenarioSets(raw: unknown, aspects: AspectPlan[], idPrefix
       const where = `${name}「${a.label}」`;
       try {
         const { scenario, prompt, reasonPrompt, texts, anchors } = parseItem(row, a, where);
+        checkAvoidTerms(where, scenario, [prompt, ...texts], avoidTerms);
         const order = stablePermutation(idPrefix + plan.indicatorId + a.id + texts.join('|'));
         return [{ id: `${idPrefix}-${plan.indicatorId}-${a.id}`, aspectId: a.id, scenario, prompt, reasonPrompt, anchors,
           options: order.map((stage, i) => ({ label: LABELS[i], text: texts[stage], stage: stage as ScenarioOption['stage'] })) }];
@@ -177,7 +198,7 @@ function parseExtension(value: unknown, where: string): ScenarioExtension {
 function parseItem(row: Record<string, unknown>, a: Aspect, where: string) {
   const scenario = text(row.scenario, 600, where + '情境'), prompt = text(row.prompt, 200, where + '題幹'), reasonPrompt = text(row.reasonPrompt, 200, where + '理由題');
   const given = (row.options ?? {}) as Record<string, unknown>, anchorRow = (row.anchors ?? {}) as Record<string, unknown>;
-  const texts = KEYS.map(k => text(given[k], 200, where + '選項'));
+  const texts = pickBalanced(KEYS.map(k => (Array.isArray(given[k]) ? given[k] as unknown[] : [given[k]]).map(v => text(v, 200, where + '選項'))));
   const anchors = a.anchors ? [...a.anchors] as ScenarioItem['anchors'] : KEYS.map(k => text(anchorRow[k], 400, where + '判讀錨點')) as ScenarioItem['anchors'];
   checkFreshOptions(where, texts);
   checkItemQuality(where, scenario, prompt, reasonPrompt, texts);
@@ -206,11 +227,37 @@ export function keepPassingItems(raw: unknown, aspects: AspectPlan[], priorOutpu
   return merged;
 }
 
+// R44：每階 1–2 種寫法中，先避開自貶／評價字詞，再挑精熟領先最少、其次最長÷最短最小的組合（texts 依階段順序）。
+export function pickBalanced(variants: string[][]): string[] {
+  let best: string[] = variants.map(v => v[0]), bestScore = Infinity;
+  const walk = (stage: number, chosen: string[]) => {
+    if (stage === variants.length) {
+      const lengths = chosen.map(t => t.length), others = Math.max(...lengths.slice(0, 3)), lead = Math.max(0, lengths[3] - others);
+      // 也避開帶自貶語氣（任何階）或評價字詞（發展、精熟）的寫法。
+      const wording = chosen.some((t, i) => SELF_DOUBT.test(t) || i >= 2 && PRAISE.test(t)) ? 2000 : 0;
+      const score = wording + (lead > TOP_LEAD ? 1000 + lead : 0) + Math.max(...lengths) / Math.min(...lengths);
+      if (score < bestScore) { bestScore = score; best = [...chosen]; }
+      return;
+    }
+    for (const t of variants[stage]) walk(stage + 1, [...chosen, t]);
+  };
+  walk(0, []);
+  return best;
+}
+
+// R43：前測的題幹與選項不得使用本單元專有名詞（情境本身已出現的詞除外）。
+export function checkAvoidTerms(where: string, scenario: string, texts: string[], avoidTerms: string[]): void {
+  const hit = avoidTerms.find(term => !scenario.includes(term) && texts.some(t => t.includes(term)));
+  if (hit) throw new Error(`${where}用了本單元專有名詞「${hit}」，前測學生還沒學過；請改用日常說法。`);
+}
+
 // R36：只用於新產生的選項（texts 依階段順序）。字數區間、最長÷最短、自貶語氣與完整性評價字詞。
 // 錯誤訊息直接寫出字數與改法，修復請求與教師畫面共用。
 export function checkFreshOptions(where: string, texts: string[]): void {
   const lengths = texts.map(t => t.length), shortest = Math.min(...lengths), longest = Math.max(...lengths);
-  if (shortest < OPTION_MIN || longest > OPTION_MAX || longest > shortest * OPTION_RATIO) throw new Error(`${where}四個選項字數 ${lengths.join('／')}（依低到高階），差距太大或太長（上限 ${OPTION_MAX} 字、最長不超過最短 ${OPTION_RATIO} 倍）；請四個都寫成 20–40 字、彼此相差 10 字內，高階不是多加幾個步驟。`);
+  if (shortest < OPTION_MIN || longest > OPTION_MAX || longest > shortest * OPTION_RATIO) throw new Error(`${where}四個選項字數 ${lengths.join('／')}（依低到高階），差距太大或太長（上限 ${OPTION_MAX} 字、最長不超過最短 ${OPTION_RATIO} 倍）；請四個都寫成 20–40 字、彼此相差 10 字內，高階不是多加幾個步驟或術語。`);
+  const lead = lengths[3] - Math.max(...lengths.slice(0, 3));
+  if (lead > TOP_LEAD) throw new Error(`${where}精熟選項比其他選項長 ${lead} 字（字數 ${lengths.join('／')}，依低到高階），學生會挑最長的；請把精熟兩種寫法都縮短到和其他階一樣長。`);
   const doubt = texts.findIndex(t => SELF_DOUBT.test(t));
   if (doubt >= 0) throw new Error(`${where}有選項帶自貶語氣（「${texts[doubt].match(SELF_DOUBT)![0]}」），學生會直接排除；請改寫成有合理好處的做法。`);
   // 評價字詞只在發展、精熟選項才會透露答案；低階的「賣得最好」等描述不算（R36 實跑誤判）。
