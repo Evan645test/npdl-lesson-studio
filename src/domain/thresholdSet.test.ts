@@ -369,7 +369,9 @@ describe('門檻題組：改選方式與估時呈現', () => {
     expect(generated).not.toContain('紙筆題估計');
     expect(generated).not.toContain('情境判斷表現');
     const picker = renderToStaticMarkup(createElement(ModePicker, { project, value: null, onChange: () => {} }));
-    expect(picker).toContain('學生自評粗估約 5 分鐘');
+    // R45：新題本的方式 E（學習單、經驗敘述）不附自評，選擇畫面改說明在課堂中完成。
+    expect(picker).toContain('課堂學習單與經驗敘述在課堂中完成');
+    expect(picker).not.toContain('學生自評粗估');
     expect(picker).not.toContain('紙筆題粗估');
     const teacher = documentMarkdown(buildDocument(project, 'teacher'));
     expect(teacher).toContain('學生自評估計約 5 分鐘');

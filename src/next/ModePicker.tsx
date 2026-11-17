@@ -4,7 +4,7 @@ import { SET_FORMAT, type ModeChoice } from '../domain/thresholdSet';
 import { ASSESSABILITY_LABEL, assessabilityOf, choiceNotice, suggestedEvidence, suggestedMode } from '../data/assessability';
 import { indicators } from '../components/labels';
 
-// 粗估每種方式的作答時間（分鐘），只用來在產生前提醒；產生後依實際內容估算。方式 E 只有自評。
+// 粗估每種方式的作答時間（分鐘），只用來在產生前提醒；產生後依實際內容估算。方式 E（學習單、經驗敘述）在課堂中完成，不列紙筆時間（R45）。
 const MODE_MINUTES: Record<SetMode, number> = { A: 9, B: 12, C: 18, D: 17, E: 5 };
 
 export const ASSESSMENT_MODE_GUIDANCE = '情境進程題讓學生在具體情境中選出並說明自己會怎麼做，用來看他在四階進程的位置，不看對錯；課堂學習單＋表現勾選表或經驗敘述＋參與紀錄以課中觀察為主要證據，不出情境題。';
@@ -84,10 +84,10 @@ export function hasPendingAssessmentModes(_project: Project, _value: ModeChoice[
 export function ModePicker({ project, value, onChange, disabled = false }: { project: Project; value: ModeChoice[] | null; onChange: (next: ModeChoice[]) => void; disabled?: boolean }) {
   const modes = effectiveModes(project, value);
   const paperMinutes = modes.reduce((n, row) => n + (row.mode === 'E' ? 0 : MODE_MINUTES[row.mode]), 0);
-  const selfMinutes = modes.reduce((n, row) => n + (row.mode === 'E' ? MODE_MINUTES.E : 0), 0);
+  const classroom = modes.some(row => row.mode === 'E');
   const timing = [
     paperMinutes ? `紙筆題粗估約 ${paperMinutes} 分鐘` : '',
-    selfMinutes ? `學生自評粗估約 ${selfMinutes} 分鐘（課中觀察時間依活動安排）` : '',
+    classroom ? '課堂學習單與經驗敘述在課堂中完成，時間依活動安排' : '',
   ].filter(Boolean).join('；');
   return <div className="sp-mode-picker" role="group" aria-label="測驗方式">
     <h3>每個子指標的測驗方式</h3>
@@ -110,6 +110,6 @@ export function ModePicker({ project, value, onChange, disabled = false }: { pro
         {notice && pickerValue !== suggestedValue && <p className="notice" role="status">{notice}</p>}
       </div>;
     })}
-    {timing && <p className="note">每次評量：{timing}。產生後依實際內容重新估算。{paperMinutes + selfMinutes > 30 ? '學生作答與自評合計超過 30 分鐘，可以考慮精簡。' : ''}</p>}
+    {timing && <p className="note">每次評量：{timing}。產生後依實際內容重新估算。{paperMinutes > 30 ? '學生紙筆作答超過 30 分鐘，可以考慮精簡。' : ''}</p>}
   </div>;
 }

@@ -22,10 +22,10 @@ const WORKSHEET_EVIDENCE_NOTICE = '課堂學習單以課中任務與作品為主
 // 改選時只提醒、不阻擋。
 export function modeNotice(suggested: SetMode, chosen: SetMode): string | null {
   if (suggested === chosen) return null;
-  if (suggested === 'E' && chosen !== 'E') return '這個子指標主要看實際行為，建議用課中評量＋自評；紙筆題只能測到知不知道該怎麼做。結果標為「認知理解」，不判定階段。';
+  if (suggested === 'E' && chosen !== 'E') return '這個子指標主要看實際行為，建議用課堂學習單或經驗敘述；紙筆題只能測到知不知道該怎麼做。結果標為「認知理解」，不判定階段。';
   if (chosen === 'A') return suggested === 'B' ? '沒有非選題確認，同一門檻只過一題時只能標「尚無法判讀」。' : '選擇題測不到要學生自己產出的部分。';
   if (suggested === 'C' && chosen === 'B') return '選擇題測不到要學生自己產出的部分。';
-  if (chosen === 'E') return '改用課中評量＋自評：不出紙筆題，以課中觀察表為主要證據，學生題本附自評。';
+  if (chosen === 'E') return '改用課中評量：不出情境題，以課堂學習單與表現勾選表（或經驗敘述）為證據，不附學生自評。';
   return null;
 }
 export function choiceNotice(row: { indicatorId: string; suggestedMode: SetMode; mode: SetMode; evidence?: 'worksheet' | 'narrative' }): string | null {

@@ -959,7 +959,7 @@ export function SinglePathApp() {
         <div className="sp-student-downloads">
           <h3>學生題本｜分開印發</h3>
           {(hasParts(pre) || hasParts(post)) && <p className="note">可先收回選擇卷，再發非選卷。</p>}
-          {hasSelfAssessmentPair && <p className="note">請從各測次的完整題本印發課中自評。</p>}
+          {hasSelfAssessmentPair && <p className="note">{pre?.format === 'scenario-progression-v1' ? '課堂學習單印在前測題本，前後測共用；經驗敘述題分別印在前測、後測題本。' : '請從各測次的完整題本印發課中自評。'}</p>}
           <div className="sp-downloads sp-phase-downloads">
             {([['pre', '前測', pre], ['post', '後測', post]] as const).map(([phase, label, assessment]) => {
               const split = hasParts(assessment);

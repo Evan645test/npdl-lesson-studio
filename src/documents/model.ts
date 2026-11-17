@@ -1,7 +1,7 @@
 import { progressionLines } from '../domain/progressionAlignment';
 import { describePaperAssessment } from '../domain/paperAssessmentSummary';
 import { MODE_PLAN, STAGES, THRESHOLDS, type AssessmentVersion, type Item, type ItemSet, type Project } from '../domain/types';
-import { ADMINISTRATION_NOTE, COGNITIVE_NOTE, judgmentLines, OBSERVATION_NOTE, SET_READING_NOTE } from './setJudgment';
+import { ADMINISTRATION_NOTE, COGNITIVE_NOTE, judgmentLines, NARRATIVE_RULE, OBSERVATION_NOTE, SET_READING_NOTE, WORKSHEET_RULE } from './setJudgment';
 import { isCognitiveOnly } from '../data/assessability';
 import { estimateAssessmentDuration } from '../domain/thresholdSet';
 import { buildPrompt } from './prompt';
@@ -104,6 +104,12 @@ export function buildDocument(project: Project, audience: Audience, options: Doc
   };
   const single = project.workflow === 'single-v1';
   const allSets = [...(pre?.sets ?? []), ...(post?.sets ?? [])];
+  // R45：情境進程題題本的方式 E 由學習單或經驗敘述取代自評；舊門檻題組的方式 E 仍附自評。
+  const kitKind = (id: string): 'worksheet' | 'narrative' | null => pre?.format !== 'scenario-progression-v1' ? null : (pre.narrativeKits ?? []).some(k => k.indicatorId === id) ? 'narrative' : (pre.classroomKits ?? []).some(k => k.indicatorId === id) ? 'worksheet' : null;
+  const eAll = allSets.filter(set => set.mode === 'E');
+  const legacyE = eAll.some(set => !kitKind(set.indicatorId));
+  const worksheetE = eAll.some(set => kitKind(set.indicatorId) === 'worksheet'), narrativeE = eAll.some(set => kitKind(set.indicatorId) === 'narrative');
+  const kitLabels = [worksheetE ? '課堂學習單' : '', narrativeE ? '經驗敘述' : ''].filter(Boolean).join('、');
   const phaseJudgmentIds = new Set([...allSets.filter(set => set.mode !== 'E' && !isCognitiveOnly(set)).map(set => set.indicatorId), ...scenarioIds]);
   const phaseMeta = (a: AssessmentVersion) => '題組版本 ' + a.id + '／設計 ' + a.designId + '／規準 ' + a.rubricVersion + '／配對前測 ' + (a.parentPreId ?? '無') + '。' + (a.reviewedAt ? '教師已確認題組' : '題組待確認') + '；' + (a.administeredAt ? '已記錄實際施測（' + new Date(a.administeredAt).toISOString() + '）' : '尚未記錄施測') + '。';
   if (audience === 'teacher') {
@@ -124,7 +130,7 @@ export function buildDocument(project: Project, audience: Audience, options: Doc
         for (const plan of scenarioPhases[0].aspects ?? []) add('paragraph', (indicators.entries.find(i => i.id === plan.indicatorId)?.name ?? plan.indicatorId) + '｜面向：' + plan.aspects.map(a => `${a.label}（${a.description}）`).join('；'));
       } else add('paragraph', '前測：' + estimate(pre) + (teacherPre ? '' : '｜後測：' + estimate(post)));
       if (!teacherPre && pre?.assessmentBlueprint) add('paragraph', describePaperAssessment(design, pre.assessmentBlueprint));
-      add('paragraph', '先核對測次與題組。' + (phaseJudgmentIds.size ? '紙筆題依各方式的門檻批閱，再填班級彙整。空白或無效作答列「尚無法判讀」，不以答對總數判階。' : '') + (allSets.some(set => set.mode === 'E') ? '方式 E 依教師觀察紀錄與學生自評核對，另列課中表現。' : '') + (allSets.some(isCognitiveOnly) ? '原建議 E 但改用紙筆題者只列認知理解證據，不判階。' : ''), { keepTogether: true });
+      add('paragraph', '先核對測次與題組。' + (phaseJudgmentIds.size ? '紙筆題依各方式的門檻批閱，再填班級彙整。空白或無效作答列「尚無法判讀」，不以答對總數判階。' : '') + (legacyE ? '方式 E 依教師觀察紀錄與學生自評核對，另列課中表現。' : '') + (kitLabels ? `課中評量（${kitLabels}）依勾選表觀察紀錄或判讀錨點判讀，另列課中表現，不請學生替自己定級。` : '') + (allSets.some(isCognitiveOnly) ? '原建議 E 但改用紙筆題者只列認知理解證據，不判階。' : ''), { keepTogether: true });
       const named = new Map(allSets.map(set => [set.indicatorId, indicators.entries.find(i => i.id === set.indicatorId)?.name ?? set.indicatorId]));
       for (const [id, name] of named) {
         const before = pre?.sets?.find(set => set.indicatorId === id);
@@ -132,7 +138,7 @@ export function buildDocument(project: Project, audience: Audience, options: Doc
         const sample = before ?? after!;
         add('heading', name + '｜方式 ' + sample.mode);
         add('paragraph', '前測：' + (before?.title ?? '尚未生成') + (teacherPre ? '' : '；後測：' + (after?.title ?? '尚未生成')));
-        if (sample.mode === 'E') { add('paragraph', '請查閱各測次的課中觀察表與學生自評說明。'); continue; }
+        if (sample.mode === 'E') { const kind = kitKind(id); add('paragraph', kind === 'narrative' ? '經驗敘述題、判讀錨點與課堂參與勾選表見各測次部分。' : kind === 'worksheet' ? '課堂學習單與表現勾選表見前測部分，前後測共用。' : '請查閱各測次的課中觀察表與學生自評說明。'); continue; }
         if (isCognitiveOnly(sample)) add('paragraph', COGNITIVE_NOTE);
         const answer = (set: ItemSet | undefined, i: number) => set?.choices[i]?.options.filter(o => o.above).map(o => o.id).join('、') || '—';
         if (sample.choices.length) table(
@@ -148,7 +154,8 @@ export function buildDocument(project: Project, audience: Audience, options: Doc
       add('heading', '附錄｜使用須知與判讀規準', { pageBreakBefore: true });
       if (scenarioIds.length) add('paragraph', '情境進程題：' + SCENARIO_READING_NOTE);
       if (allSets.some(set => set.mode !== 'E')) add('paragraph', (allSets.some(set => set.mode === 'E') ? '紙筆題：' : '') + SET_READING_NOTE);
-      if (allSets.some(set => set.mode === 'E')) add('paragraph', '方式 E 的課中觀察與自評另列；課中表現與紙筆情境判斷分開呈現。');
+      if (legacyE) add('paragraph', '方式 E 的課中觀察與自評另列；課中表現與紙筆情境判斷分開呈現。');
+      if (kitLabels) add('paragraph', `課中評量（${kitLabels}）另列；課中表現與情境進程題分開呈現。`);
       add('paragraph', '本文件不是已實施或成效證據。請使用班級代號及去識別代稱，不填姓名。');
     }
     add('paragraph', '設計 ' + design.id + '；規準 ' + design.rubricVersion + '。設計來源：' + (design.origin === 'ai' ? 'AI 建議草稿' : design.origin === 'teacher' ? '教師修訂草稿' : '人工設計範例') + '。設計' + (design.confirmedAt ? '已由教師確認' : '尚未確認') + '；未以真實學生作答校準。');
@@ -170,9 +177,10 @@ export function buildDocument(project: Project, audience: Audience, options: Doc
     add('paragraph', `來源與版本：${design.rubricSource}／${design.rubricVersion}。四階不可直接映射書中學生五階或設計品質四階。`);
     design.criteria.forEach(c => { add('heading', `${c.label}（${c.id}／${c.indicatorId}）`); add('paragraph', `觀察特徵：${c.observable}\n範圍：${c.scope}\n未觀察：${c.unobserved}`); c.stages.forEach((s, i) => add('paragraph', `${STAGES[i]}：${s}`)); if (c.alignment) alignmentNote(c.indicatorId, c.alignment); });
     if (sets) {
-      const applicable = judgmentLines(allSets.filter(set => !isCognitiveOnly(set)).map(set => set.mode));
+      const judged = allSets.filter(set => !isCognitiveOnly(set) && !(set.mode === 'E' && kitKind(set.indicatorId)));
+      const applicable = [...judgmentLines(judged.map(set => set.mode)), ...(worksheetE ? [WORKSHEET_RULE] : []), ...(narrativeE ? [NARRATIVE_RULE] : [])];
       if (applicable.length) {
-        add('heading', phaseJudgmentIds.size ? '門檻題組判讀規則（教師使用，工具不自動判級）' : '課中評量判讀規則（教師使用，工具不自動判級）');
+        add('heading', phaseJudgmentIds.size && judged.some(set => set.mode !== 'E') ? '門檻題組判讀規則（教師使用，工具不自動判級）' : '課中評量判讀規則（教師使用，工具不自動判級）');
         applicable.forEach(line => add('paragraph', line));
       }
     }
@@ -371,7 +379,13 @@ export function buildDocument(project: Project, audience: Audience, options: Doc
       const kitOf = (id: string) => a.format === 'scenario-progression-v1' ? (pre?.classroomKits ?? []).find(k => k.indicatorId === id) : undefined;
       const narrativeOf = (id: string) => a.format === 'scenario-progression-v1' ? (pre?.narrativeKits ?? []).find(k => k.indicatorId === id) : undefined;
       const eSets = (a.sets ?? []).filter(set => set.mode === 'E'), kitted = eSets.filter(set => kitOf(set.indicatorId) || narrativeOf(set.indicatorId));
-      if (!paper.length && !(a.scenarioSets ?? []).length) add('paragraph', kitted.length ? (audience === 'student' ? '本次沒有紙筆題；請在課堂活動中完成下方學習單。' : '本次沒有紙筆題；以下為課堂學習單與表現勾選表。') : (audience === 'student' ? '本次沒有紙筆題；所有子指標都採課中評量，請完成下方自評。' : '本次沒有紙筆題；以下為課中評量的觀察表。'));
+      // R45：學生卷依材料說明；學習單只印在前測，後測沿用同一份。經驗敘述沒有學習單。
+      const hasWorksheet = kitted.some(set => kitOf(set.indicatorId)), hasNarrative = kitted.some(set => narrativeOf(set.indicatorId));
+      const studentKitLine = hasWorksheet && hasNarrative ? (a.phase === 'pre' ? '本次沒有選擇題；請完成下方的課堂學習單與敘述題。' : '本次沒有選擇題；請完成下方的敘述題，課堂學習單沿用前測題本的同一份。')
+        : hasNarrative ? '本次沒有選擇題；請依每題的提示，寫下你的經驗與想法。'
+        : a.phase === 'pre' ? '本次沒有紙筆題；請在課堂活動中完成下方學習單。' : '本次沒有紙筆題；課堂學習單在前測題本中，前後測共用同一份，請在課堂活動中完成。';
+      const teacherKitLine = hasWorksheet && a.phase === 'pre' ? '本次沒有紙筆題；以下為課堂學習單與表現勾選表。' : hasNarrative ? '本次沒有選擇題；以下為經驗敘述題與判讀錨點。' : '本次沒有紙筆題；課堂學習單與表現勾選表見前測部分。';
+      if (!paper.length && !(a.scenarioSets ?? []).length) add('paragraph', kitted.length ? (audience === 'student' ? studentKitLine : teacherKitLine) : (audience === 'student' ? '本次沒有紙筆題；所有子指標都採課中評量，請完成下方自評。' : '本次沒有紙筆題；以下為課中評量的觀察表。'));
       eSets.forEach((set, i) => { const kit = kitOf(set.indicatorId), narrative = narrativeOf(set.indicatorId); if (!kit && !narrative) itemSet(set, i + 1); else if (kit && a.phase === 'pre') kitSection(kit); else if (narrative) narrativeSection(narrative, a.phase); else if (audience === 'teacher') add('paragraph', `${indicators.entries.find(x => x.id === set.indicatorId)?.name ?? set.indicatorId}：課中學習單與課堂表現勾選表見前測部分，前後測共用。`); });
       return;
     }
